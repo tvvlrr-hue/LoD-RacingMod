@@ -10,7 +10,7 @@ import org.legendofdragoon.modloader.events.EventListener;
 
 import static legend.core.GameEngine.EVENTS;
 
-@Mod(id = RacingMinigameMod.MOD_ID, version = "^1.0.0")
+@Mod(id = RacingMinigameMod.MOD_ID, version = "^3.0.0")
 public class RacingMinigameMod {
   public static final String MOD_ID = "racing_minigame_lohan";
   private static final Logger LOGGER = LogManager.getFormatterLogger(RacingMinigameMod.class);
