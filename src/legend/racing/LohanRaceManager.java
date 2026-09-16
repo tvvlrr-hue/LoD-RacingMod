@@ -170,7 +170,7 @@ public class LohanRaceManager {
     // Reset racers
     for (int i = 0; i < racers.length; i++) {
       final Racer r = racers[i];
-      r.pathProgress = i * -0.4f; // Stagger starting positions slightly
+      r.pathProgress = i * 0.15f; // Non-negative staggered starting positions
       r.currentSpeed = r.baseSpeed;
       r.boostTimer = 0;
       r.slowTimer = 0;
@@ -209,7 +209,7 @@ public class LohanRaceManager {
 
     // Reset path progress to start of this scene for all racers
     for (final Racer r : racers) {
-      r.pathProgress = Math.max(0.0f, r.pathProgress % 1.0f);
+      r.pathProgress = 0.0f;
       r.lastHurdleIndex = -1;
       r.isJumping = false;
     }
@@ -240,17 +240,21 @@ public class LohanRaceManager {
       return;
     }
 
-    if (state == RaceState.COUNTDOWN) {
-      updateCountdown();
-    } else if (state == RaceState.RACING) {
-      updateRace();
-    } else if (state == RaceState.FINISHED) {
-      updateFinished();
-    }
+    try {
+      if (state == RaceState.COUNTDOWN) {
+        updateCountdown();
+      } else if (state == RaceState.RACING) {
+        updateRace();
+      } else if (state == RaceState.FINISHED) {
+        updateFinished();
+      }
 
-    // Render HUD and Arrow
-    renderRaceHUD();
-    renderPlayerArrow();
+      // Render HUD and Arrow
+      renderRaceHUD();
+      renderPlayerArrow();
+    } catch (Throwable t) {
+      LOGGER.error("LohanRaceManager onRender error", t);
+    }
   }
 
   private static void updateCountdown() {
@@ -452,7 +456,8 @@ public class LohanRaceManager {
   }
 
   private static int findUpcomingHurdle(final Racer r, final List<Waypoint> waypoints) {
-    final int currentIdx = (int) Math.floor(r.pathProgress);
+    if (waypoints.isEmpty()) return -1;
+    final int currentIdx = Math.max(0, (int) Math.floor(r.pathProgress));
     for (int i = currentIdx; i < Math.min(waypoints.size(), currentIdx + 3); i++) {
       if (waypoints.get(i).isHurdle) {
         return i;
@@ -466,7 +471,8 @@ public class LohanRaceManager {
   }
 
   private static void interpolateWaypointPosition(final Racer r, final List<Waypoint> waypoints) {
-    final int idx = Math.max(0, Math.min(waypoints.size() - 2, (int) Math.floor(r.pathProgress)));
+    if (waypoints.size() < 2) return;
+    final int idx = Math.max(0, Math.min(waypoints.size() - 2, Math.max(0, (int) Math.floor(r.pathProgress))));
     final float t = Math.max(0.0f, Math.min(1.0f, r.pathProgress - idx));
 
     final Waypoint p0 = waypoints.get(idx);
@@ -543,7 +549,13 @@ public class LohanRaceManager {
     }
   }
 
+  private static String lastHudText = "";
+
   private static void openRaceHUDTextbox(final String text, final int x, final int y, final int chars, final int lines) {
+    if (text.equals(lastHudText)) {
+      return;
+    }
+    lastHudText = text;
     safelyClearHUDTextbox();
 
     final Textbox4c textbox = textboxes_800be358[2];
@@ -585,6 +597,7 @@ public class LohanRaceManager {
 
   private static void safelyClearHUDTextbox() {
     try {
+      lastHudText = "";
       clearTextbox(2);
       clearTextboxText(2);
 
