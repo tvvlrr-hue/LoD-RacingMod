@@ -45,15 +45,15 @@ public class LohanRaceNpc {
   public static final int LOHAN_CUT = 151;
 
   // Vendor position standing directly inside the very bottom right booth behind the counter
-  public static final float NPC_POS_X = 260.0f;
+  public static final float NPC_POS_X = 210.0f;
   public static final float NPC_POS_Y = -4.0f;
-  public static final float NPC_POS_Z = -790.0f;
-  public static final float NPC_ROT_Y = 2.45f; // Facing northwest toward Dart across the counter (red arrow direction)
+  public static final float NPC_POS_Z = -925.0f;
+  public static final float NPC_ROT_Y = 2.26f; // Facing northwest toward Dart across the counter
 
   // Interaction trigger zone in front of the bottom right booth's counter
-  public static final float BOOTH_FRONT_X = 175.0f;
-  public static final float BOOTH_FRONT_Z = -720.0f;
-  public static final float INTERACT_RADIUS = 75.0f;
+  public static final float BOOTH_FRONT_X = 145.0f;
+  public static final float BOOTH_FRONT_Z = -845.0f;
+  public static final float INTERACT_RADIUS = 85.0f;
 
   public enum DialogueState {
     IDLE,
@@ -163,10 +163,10 @@ public class LohanRaceNpc {
     final float distSq = dx * dx + dz * dz;
     final boolean isNear = distSq < (INTERACT_RADIUS * INTERACT_RADIUS);
 
-    // Check if Dart is facing towards the booth/vendor
+    // Check if Dart is facing towards the booth/vendor (forgiving ~90 degree arc)
     final float angleToBooth = MathHelper.positiveAtan2(NPC_POS_Z - dartPos.z, NPC_POS_X - dartPos.x);
     final float dartRotY = dartSobj.model_00.coord2_14.transforms.rotate.y;
-    final boolean isFacingBooth = angleDifference(dartRotY, angleToBooth) < 1.3f;
+    final boolean isFacingBooth = angleDifference(dartRotY, angleToBooth) < 1.6f;
 
     if (state == DialogueState.IDLE) {
       npcSobj.model_00.coord2_14.transforms.rotate.y = NPC_ROT_Y;
