@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static legend.core.GameEngine.PLATFORM;
+import static legend.game.Models.loadModelStandardAnimation;
 import static legend.game.Scus94491BpeSegment_800b.gameState_800babc8;
 import static legend.game.Scus94491BpeSegment_800b.sobjPositions_800bd818;
 import static legend.game.Text.calculateAppropriateTextboxBounds;
@@ -43,16 +44,16 @@ public class LohanRaceNpc {
 
   public static final int LOHAN_CUT = 151;
 
-  // Vendor position standing directly inside the empty booth behind the counter
-  public static final float NPC_POS_X = 358.0f;
+  // Vendor position standing directly inside the foreground booth behind the table counter
+  public static final float NPC_POS_X = 275.0f;
   public static final float NPC_POS_Y = -4.0f;
-  public static final float NPC_POS_Z = 230.0f;
-  public static final float NPC_ROT_Y = 3.53f; // Facing northwest toward Dart in front of counter
+  public static final float NPC_POS_Z = 445.0f;
+  public static final float NPC_ROT_Y = 3.22f; // Facing west-southwest toward Dart across the counter
 
   // Interaction trigger zone strictly in front of this booth's counter
-  public static final float BOOTH_FRONT_X = 288.7f;
-  public static final float BOOTH_FRONT_Z = 201.3f;
-  public static final float INTERACT_RADIUS = 32.0f; // Constrained so it NEVER triggers in the other vendor's booth
+  public static final float BOOTH_FRONT_X = 210.0f;
+  public static final float BOOTH_FRONT_Z = 440.0f;
+  public static final float INTERACT_RADIUS = 42.0f;
 
   public enum DialogueState {
     IDLE,
@@ -65,9 +66,14 @@ public class LohanRaceNpc {
   private static int templateIndexUsed = -1;
   private static int cooldownTicks = 0;
   private static final Vector3f dartLockedPos = new Vector3f();
+  private static ScriptState<SubmapObject210> pausedDartScript = null;
 
   public static void onSubmapLoad(final SMap smap, final RetailSubmap retail, final List<SubmapObject> objects) {
     if (retail.cut != LOHAN_CUT) {
+      if (pausedDartScript != null) {
+        pausedDartScript.resume();
+        pausedDartScript = null;
+      }
       npcSobjIndex = -1;
       state = DialogueState.IDLE;
       return;
@@ -108,11 +114,19 @@ public class LohanRaceNpc {
 
   public static void onRender() {
     if (!(EngineStates.currentEngineState_8004dd04 instanceof SMap smap)) {
+      if (pausedDartScript != null) {
+        pausedDartScript.resume();
+        pausedDartScript = null;
+      }
       state = DialogueState.IDLE;
       return;
     }
 
     if (!(smap.submap instanceof RetailSubmap retail) || retail.cut != LOHAN_CUT) {
+      if (pausedDartScript != null) {
+        pausedDartScript.resume();
+        pausedDartScript = null;
+      }
       state = DialogueState.IDLE;
       return;
     }
@@ -157,19 +171,22 @@ public class LohanRaceNpc {
     if (state == DialogueState.IDLE) {
       npcSobj.model_00.coord2_14.transforms.rotate.y = NPC_ROT_Y;
     } else {
-      // Lock Dart's movement and turn both characters to face each other across the counter
+      // Lock Dart's position and turn both characters to face each other across the counter
       dartSobj.model_00.coord2_14.coord.transfer.set(dartLockedPos);
-      dartSobj.interpMovementStart.set(dartLockedPos);
-      dartSobj.interpMovementDest.set(dartLockedPos);
-      dartSobj.movementDestination_138.set(dartLockedPos);
       dartSobj.movementStep_148.zero();
+      dartSobj.interpMovementTicks = 0;
+      dartSobj.interpMovementTicksTotal = 0;
       dartSobj.movementTicks_144 = 0;
       dartSobj.movementType_170 = 0;
       dartSobj.animIndex_132 = 0;
 
       // Dart faces the vendor
-      dartSobj.model_00.coord2_14.transforms.rotate.y =
+      final float dartFacingAngle =
           MathHelper.positiveAtan2(NPC_POS_Z - dartLockedPos.z, NPC_POS_X - dartLockedPos.x);
+      dartSobj.model_00.coord2_14.transforms.rotate.y = dartFacingAngle;
+      dartSobj.interpRotationTicksTotalY = 0;
+      dartSobj.rotationFrames_188 = 0;
+
       // Vendor faces Dart
       npcSobj.model_00.coord2_14.transforms.rotate.y =
           MathHelper.positiveAtan2(dartLockedPos.z - NPC_POS_Z, dartLockedPos.x - NPC_POS_X);
@@ -181,7 +198,7 @@ public class LohanRaceNpc {
         if (isNear && isFacingBooth && cooldownTicks == 0 && PLATFORM.isActionPressed(INPUT_ACTION_SMAP_INTERACT.get())) {
           LOGGER.info("LohanRaceNpc: Dart interacting at (%.1f, %.1f, %.1f) facing Race Booth counter",
               dartPos.x, dartPos.y, dartPos.z);
-          startDialogue(dartSobj);
+          startDialogue(smap, dartState, dartSobj);
         }
       }
 
@@ -226,10 +243,31 @@ public class LohanRaceNpc {
     }
   }
 
-  private static void startDialogue(final SubmapObject210 dartSobj) {
+  private static void startDialogue(final SMap smap, final ScriptState<SubmapObject210> dartState, final SubmapObject210 dartSobj) {
     dartLockedPos.set(dartSobj.model_00.coord2_14.coord.transfer);
     state = DialogueState.GREETING;
     cooldownTicks = 15;
+    pausedDartScript = dartState;
+    dartState.pause();
+
+    // Immediately stop running and set idle animation
+    dartSobj.animIndex_132 = 0;
+    if (smap.submap != null && !smap.submap.objects.isEmpty() && dartSobj.sobjIndex_12e < smap.submap.objects.size()) {
+      final SubmapObject playerObj = smap.submap.objects.get(dartSobj.sobjIndex_12e);
+      if (!playerObj.animations.isEmpty()) {
+        loadModelStandardAnimation(dartSobj.model_00, playerObj.animations.get(0));
+      }
+    }
+
+    dartSobj.movementStep_148.zero();
+    dartSobj.interpMovementTicks = 0;
+    dartSobj.interpMovementTicksTotal = 0;
+    dartSobj.interpRotationTicksTotalY = 0;
+    dartSobj.rotationFrames_188 = 0;
+
+    final float dartFacingAngle =
+        MathHelper.positiveAtan2(NPC_POS_Z - dartLockedPos.z, NPC_POS_X - dartLockedPos.x);
+    dartSobj.model_00.coord2_14.transforms.rotate.y = dartFacingAngle;
 
     // Greeting Dialogue (Matching retail vendor style)
     final String title = "Racing Minigame";
@@ -293,6 +331,11 @@ public class LohanRaceNpc {
   private static void closeDialogue() {
     state = DialogueState.IDLE;
     cooldownTicks = 20;
+
+    if (pausedDartScript != null) {
+      pausedDartScript.resume();
+      pausedDartScript = null;
+    }
 
     safelyClearTextbox(0);
     safelyClearTextbox(1);
@@ -391,19 +434,17 @@ public class LohanRaceNpc {
     textboxText.charIndex_30 = 0;
     textboxText.charX_34 = 0;
     textboxText.charY_36 = 0;
+    textboxText.state_00 = TextboxTextState.PROCESS_TEXT_4;
 
     calculateAppropriateTextboxBounds(index, x, y);
 
-    // Directly populate characters so this passive info box doesn't consume input
-    for (int i = 0; i < text.length() && i < textboxText.chars_1c; i++) {
-      final int c = LodString.toLodChar(text.charAt(i));
-      final TextboxChar08 chr = textboxText.chars_58[i];
-      chr.x_00 = i * 9;
-      chr.y_02 = 0;
-      chr.colour_04 = TextColour.WHITE;
-      chr.char_06 = c;
+    // Step through all characters using the engine so chars_58 is populated with font glyphs
+    while (textboxText.charIndex_30 < textboxText.str_24.length()
+        && textboxText.state_00 != TextboxTextState.CLOSE_TEXTBOX_15) {
+      Text.processTextboxCharacter(index);
     }
-    textboxText.state_00 = TextboxTextState.PROCESS_NO_INPUT_ADVANCED_13;
+    // Set to passive wait state so it does NOT close or consume inputs
+    textboxText.state_00 = TextboxTextState.CLOSE_BATTLE_NO_INPUT_16;
   }
 
   private static LodString buildNamedLodString(final String name, final String text) {
