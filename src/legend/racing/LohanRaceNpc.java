@@ -29,6 +29,7 @@ import java.util.List;
 
 import static legend.core.GameEngine.PLATFORM;
 import static legend.game.Models.loadModelStandardAnimation;
+import static legend.game.EngineStates.currentEngineState_8004dd04;
 import static legend.game.Scus94491BpeSegment_800b.gameState_800babc8;
 import static legend.game.Scus94491BpeSegment_800b.sobjPositions_800bd818;
 import static legend.game.Text.calculateAppropriateTextboxBounds;
@@ -321,11 +322,14 @@ public class LohanRaceNpc {
   private static void handleSelectionResult(final int selectedLine) {
     if (selectedLine == 0) {
       LOGGER.info("LohanRaceNpc: Player chose 'No, thank you.'.");
+      closeDialogue();
     } else {
-      LOGGER.info("LohanRaceNpc: Player chose 'Let's try.'.");
+      LOGGER.info("LohanRaceNpc: Player chose 'Let's try.'. Starting minigame!");
+      closeDialogue();
+      if (currentEngineState_8004dd04 instanceof final SMap smap) {
+        LohanRaceManager.startRace(smap);
+      }
     }
-    // Accepting the minigame ends the convo cleanly like saying no thanks
-    closeDialogue();
   }
 
   private static void closeDialogue() {

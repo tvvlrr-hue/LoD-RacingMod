@@ -24,11 +24,13 @@ public class RacingMinigameMod {
   public void onSubmapLoad(final SubmapLoadEvent event) {
     if (event.getSubmap() instanceof RetailSubmap retail) {
       LohanRaceNpc.onSubmapLoad(event.getEngineState(), retail, event.submapObjects);
+      LohanRaceManager.onSubmapLoad(event.getEngineState(), retail, event.submapObjects);
     }
   }
 
   @EventListener
   public void onRender(final RenderEvent event) {
     LohanRaceNpc.onRender();
+    LohanRaceManager.onRender();
   }
 }
