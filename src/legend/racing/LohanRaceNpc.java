@@ -44,16 +44,16 @@ public class LohanRaceNpc {
 
   public static final int LOHAN_CUT = 151;
 
-  // Vendor position standing directly inside the foreground booth behind the table counter
-  public static final float NPC_POS_X = 275.0f;
+  // Vendor position standing directly inside the very bottom right booth behind the counter
+  public static final float NPC_POS_X = 335.0f;
   public static final float NPC_POS_Y = -4.0f;
-  public static final float NPC_POS_Z = 445.0f;
-  public static final float NPC_ROT_Y = 3.22f; // Facing west-southwest toward Dart across the counter
+  public static final float NPC_POS_Z = -385.0f;
+  public static final float NPC_ROT_Y = 2.81f; // Facing west-northwest toward Dart across the counter
 
-  // Interaction trigger zone strictly in front of this booth's counter
-  public static final float BOOTH_FRONT_X = 210.0f;
-  public static final float BOOTH_FRONT_Z = 440.0f;
-  public static final float INTERACT_RADIUS = 42.0f;
+  // Interaction trigger zone in front of the bottom right booth's counter
+  public static final float BOOTH_FRONT_X = 220.0f;
+  public static final float BOOTH_FRONT_Z = -350.0f;
+  public static final float INTERACT_RADIUS = 65.0f;
 
   public enum DialogueState {
     IDLE,
