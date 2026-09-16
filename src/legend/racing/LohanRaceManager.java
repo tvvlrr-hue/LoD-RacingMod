@@ -7,6 +7,7 @@ import legend.core.renderer.Obj;
 import legend.core.renderer.QuadBuilder;
 import legend.core.renderer.QueuedModelStandard;
 import legend.game.Text;
+import legend.game.scripting.ScriptState;
 import legend.game.submap.RetailSubmap;
 import legend.game.submap.SMap;
 import legend.game.submap.SubmapObject;
@@ -97,9 +98,9 @@ public class LohanRaceManager {
   private static boolean lastInteractPressed = false;
 
   // Racers
-  private static final Racer playerRacer = new Racer(0, true, 4.2f);
-  private static final Racer npcRacer1 = new Racer(1, false, 4.05f);
-  private static final Racer npcRacer2 = new Racer(2, false, 4.15f);
+  private static final Racer playerRacer = new Racer(0, true, 3.5f);
+  private static final Racer npcRacer1 = new Racer(1, false, 3.4f);
+  private static final Racer npcRacer2 = new Racer(2, false, 3.45f);
   private static final Racer[] racers = new Racer[]{playerRacer, npcRacer1, npcRacer2};
 
   // Dart restoration
@@ -170,7 +171,7 @@ public class LohanRaceManager {
     // Reset racers
     for (int i = 0; i < racers.length; i++) {
       final Racer r = racers[i];
-      r.pathProgress = i * 0.15f; // Non-negative staggered starting positions
+      r.pathProgress = i * 0.12f;
       r.currentSpeed = r.baseSpeed;
       r.boostTimer = 0;
       r.slowTimer = 0;
@@ -185,10 +186,29 @@ public class LohanRaceManager {
       dartSavedPos.set(dartSobj.model_00.coord2_14.coord.transfer);
       dartSavedRot.set(dartSobj.model_00.coord2_14.transforms.rotate);
       dartSobj.hidden_128 = true;
+      dartSobj.cameraAttached_178 = true;
       smap.sobjs_800c6880[0].pause();
     }
 
     assignRacerSobjs(smap);
+
+    // Snap to starting positions
+    final List<Waypoint> waypoints = getCurrentWaypoints();
+    if (!waypoints.isEmpty()) {
+      for (final Racer r : racers) {
+        interpolateWaypointPosition(r, waypoints);
+      }
+      if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
+        final ScriptState<SubmapObject210> dartState = smap.sobjs_800c6880[0];
+        final SubmapObject210 dartSobj = dartState.innerStruct_00;
+        dartSobj.hidden_128 = true;
+        dartSobj.cameraAttached_178 = true;
+        dartSobj.model_00.coord2_14.coord.transfer.set(playerRacer.pos);
+        if (dartState.ticker_04 != null) {
+          dartState.ticker_04.accept(dartState, dartSobj);
+        }
+      }
+    }
   }
 
   public static void onSubmapLoad(final SMap smap, final RetailSubmap retail, final List<SubmapObject> objects) {
@@ -199,19 +219,33 @@ public class LohanRaceManager {
     currentCut = retail.cut;
     LOGGER.info("LohanRaceManager: Loaded submap cut %d during race.", currentCut);
 
-    // Hide Dart if present
-    if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
-      smap.sobjs_800c6880[0].innerStruct_00.hidden_128 = true;
-      smap.sobjs_800c6880[0].pause();
-    }
-
     assignRacerSobjs(smap);
 
     // Reset path progress to start of this scene for all racers
-    for (final Racer r : racers) {
-      r.pathProgress = 0.0f;
+    for (int i = 0; i < racers.length; i++) {
+      final Racer r = racers[i];
+      r.pathProgress = i * 0.12f;
       r.lastHurdleIndex = -1;
       r.isJumping = false;
+      r.jumpProgress = 0;
+    }
+
+    final List<Waypoint> waypoints = getCurrentWaypoints();
+    if (!waypoints.isEmpty()) {
+      for (final Racer r : racers) {
+        interpolateWaypointPosition(r, waypoints);
+      }
+      // Snap camera to start of new scene
+      if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
+        final ScriptState<SubmapObject210> dartState = smap.sobjs_800c6880[0];
+        final SubmapObject210 dartSobj = dartState.innerStruct_00;
+        dartSobj.hidden_128 = true;
+        dartSobj.cameraAttached_178 = true;
+        dartSobj.model_00.coord2_14.coord.transfer.set(playerRacer.pos);
+        if (dartState.ticker_04 != null) {
+          dartState.ticker_04.accept(dartState, dartSobj);
+        }
+      }
     }
 
     if (state == RaceState.LAP_TRANSITION) {
@@ -220,13 +254,13 @@ public class LohanRaceManager {
   }
 
   private static void assignRacerSobjs(final SMap smap) {
-    // Find creature objects in current cut (usually sobjs 7..12)
+    // Objects 8, 9, 10 are the 3 racing creatures across Cuts 151, 149, and 150
     final int sobjCount = smap.sobjs_800c6880 != null ? smap.sobjs_800c6880.length : 0;
     playerSobjIndex = Math.min(8, Math.max(1, sobjCount - 3));
     npc1SobjIndex = Math.min(playerSobjIndex + 1, sobjCount - 1);
     npc2SobjIndex = Math.min(playerSobjIndex + 2, sobjCount - 1);
 
-    // Pause retail creature scripts so our physics/control take effect
+    // Pause retail creature scripts so our physics/control take full effect
     for (int idx : new int[]{playerSobjIndex, npc1SobjIndex, npc2SobjIndex}) {
       if (idx >= 0 && idx < sobjCount && smap.sobjs_800c6880[idx] != null) {
         smap.sobjs_800c6880[idx].pause();
@@ -263,13 +297,27 @@ public class LohanRaceManager {
       state = RaceState.RACING;
       LOGGER.info("LohanRaceManager: GO! Race started.");
     }
+
+    // Keep camera locked onto starting grid
+    if (currentEngineState_8004dd04 instanceof final SMap smap) {
+      if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
+        final ScriptState<SubmapObject210> dartState = smap.sobjs_800c6880[0];
+        final SubmapObject210 dartSobj = dartState.innerStruct_00;
+        dartSobj.hidden_128 = true;
+        dartSobj.cameraAttached_178 = true;
+        dartSobj.model_00.coord2_14.coord.transfer.set(playerRacer.pos);
+        if (dartState.ticker_04 != null) {
+          dartState.ticker_04.accept(dartState, dartSobj);
+        }
+      }
+    }
   }
 
   private static void updateRace() {
     if (!(currentEngineState_8004dd04 instanceof final SMap smap)) return;
 
     final List<Waypoint> currentWaypoints = getCurrentWaypoints();
-    if (currentWaypoints.isEmpty()) return;
+    if (currentWaypoints.size() < 2) return;
 
     // Check player input for jumping (edge-triggered)
     final boolean interactPressed = PLATFORM.isActionPressed(INPUT_ACTION_SMAP_INTERACT.get());
@@ -327,8 +375,12 @@ public class LohanRaceManager {
         }
       }
 
-      // Advance path progress along track
-      final float step = (r.currentSpeed / 100.0f);
+      // Advance path progress along track based on physical segment distance
+      final int curWp = Math.max(0, Math.min(currentWaypoints.size() - 2, (int) Math.floor(r.pathProgress)));
+      final Waypoint w0 = currentWaypoints.get(curWp);
+      final Waypoint w1 = currentWaypoints.get(curWp + 1);
+      final float segDist = Math.max(1.0f, (float) Math.hypot(w1.x - w0.x, w1.z - w0.z));
+      final float step = r.currentSpeed / segDist;
       r.pathProgress += step;
 
       // Update 3D position & rotation from waypoints
@@ -347,6 +399,19 @@ public class LohanRaceManager {
         sobj.model_00.coord2_14.coord.transfer.set(r.pos);
         sobj.model_00.coord2_14.transforms.rotate.set(r.rot);
         sobj.animIndex_132 = r.isJumping ? (r.jumpSucceeded ? 3 : 5) : 1; // 1=run, 3=jump, 5=stumble
+      }
+    }
+
+    // Camera follow: update Dart position and call ticker to smoothly move camera
+    if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
+      final ScriptState<SubmapObject210> dartState = smap.sobjs_800c6880[0];
+      final SubmapObject210 dartSobj = dartState.innerStruct_00;
+      dartSobj.hidden_128 = true;
+      dartSobj.cameraAttached_178 = true;
+      dartSobj.model_00.coord2_14.coord.transfer.set(playerRacer.pos);
+      dartSobj.model_00.coord2_14.transforms.rotate.set(playerRacer.rot);
+      if (dartState.ticker_04 != null) {
+        dartState.ticker_04.accept(dartState, dartSobj);
       }
     }
 
@@ -431,11 +496,16 @@ public class LohanRaceManager {
 
     // Restore Dart
     if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
-      final SubmapObject210 dart = smap.sobjs_800c6880[0].innerStruct_00;
+      final ScriptState<SubmapObject210> dartState = smap.sobjs_800c6880[0];
+      final SubmapObject210 dart = dartState.innerStruct_00;
       dart.hidden_128 = false;
+      dart.cameraAttached_178 = true;
       dart.model_00.coord2_14.coord.transfer.set(dartSavedPos);
       dart.model_00.coord2_14.transforms.rotate.set(dartSavedRot);
-      smap.sobjs_800c6880[0].resume();
+      dartState.resume();
+      if (dartState.ticker_04 != null) {
+        dartState.ticker_04.accept(dartState, dart);
+      }
     }
 
     // Award reward if won 1st place!
