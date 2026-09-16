@@ -1,0 +1,6 @@
+# LoD Racing Minigame Mod - .gitignore
+bin/
+*.class
+*.jar
+.DS_Store
+Thumbs.db
