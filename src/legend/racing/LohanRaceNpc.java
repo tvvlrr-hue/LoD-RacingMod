@@ -1,7 +1,6 @@
 package legend.racing;
 
 import legend.core.MathHelper;
-import legend.core.renderer.Translucency;
 import legend.game.EngineStates;
 import legend.game.Text;
 import legend.game.inventory.screens.TextColour;
@@ -12,6 +11,7 @@ import legend.game.submap.SMap;
 import legend.game.submap.SobjPos14;
 import legend.game.submap.SubmapObject;
 import legend.game.submap.SubmapObject210;
+import legend.game.tmd.UvAdjustmentMetrics14;
 import legend.game.types.BackgroundType;
 import legend.game.types.LodString;
 import legend.game.types.Model124;
@@ -21,7 +21,6 @@ import legend.game.types.TextboxState;
 import legend.game.types.TextboxText84;
 import legend.game.types.TextboxTextState;
 import legend.game.types.TextboxType;
-import legend.game.tmd.UvAdjustmentMetrics14;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joml.Vector3f;
@@ -45,16 +44,14 @@ public class LohanRaceNpc {
 
   public static final int LOHAN_CUT = 151;
 
-  // NPC position behind booth counter facing towards Dart (northwest)
-  public static final float NPC_POS_X = 360.0f;
+  // NPC position at the empty booth counter on the right, matching user's red stick figure
+  public static final float NPC_POS_X = 350.0f;
   public static final float NPC_POS_Y = -4.0f;
-  public static final float NPC_POS_Z = 160.0f;
-  public static final float NPC_ROT_Y = 3.92f; // ~225 degrees in radians
+  public static final float NPC_POS_Z = 235.0f;
+  public static final float NPC_ROT_Y = 3.8f; // Facing northwest towards Dart and walkway
 
-  // Player interaction trigger area in front of the counter
-  public static final float BOOTH_FRONT_X = 280.0f;
-  public static final float BOOTH_FRONT_Z = 200.0f;
-  public static final float INTERACT_RADIUS = 75.0f;
+  // Player interaction trigger area
+  public static final float INTERACT_RADIUS = 95.0f;
 
   public enum DialogueState {
     IDLE,
@@ -65,6 +62,7 @@ public class LohanRaceNpc {
 
   private static DialogueState state = DialogueState.IDLE;
   private static int npcSobjIndex = -1;
+  private static int templateIndexUsed = -1;
   private static int cooldownTicks = 0;
 
   public static void onSubmapLoad(final SMap smap, final RetailSubmap retail, final List<SubmapObject> objects) {
@@ -95,9 +93,10 @@ public class LohanRaceNpc {
         pos.rot_0c.set(0.0f, NPC_ROT_Y, 0.0f);
 
         npcSobjIndex = newIndex;
+        templateIndexUsed = templateIndex;
         state = DialogueState.IDLE;
         cooldownTicks = 30;
-        LOGGER.info("LohanRaceNpc: Spawned Race Minigame NPC at index %d (cut %d)", newIndex, LOHAN_CUT);
+        LOGGER.info("LohanRaceNpc: Spawned Race Minigame NPC at index %d (cut %d, template %d)", newIndex, LOHAN_CUT, templateIndex);
       } else {
         LOGGER.warn("LohanRaceNpc: Cannot spawn NPC, sobjs array limit reached (%d)", newIndex);
       }
@@ -134,16 +133,20 @@ public class LohanRaceNpc {
     final SubmapObject210 npcSobj = npcState.innerStruct_00;
     final SubmapObject210 dartSobj = dartState.innerStruct_00;
 
-    // Ensure NPC stays in position behind the counter
+    // Ensure NPC stays in position at booth counter
     npcSobj.model_00.coord2_14.coord.transfer.set(NPC_POS_X, NPC_POS_Y, NPC_POS_Z);
 
+    if (templateIndexUsed >= 0 && templateIndexUsed < retail.uvAdjustments.size()) {
+      npcSobj.model_00.uvAdjustments_9d = retail.uvAdjustments.get(templateIndexUsed);
+    }
+
     final Vector3f dartPos = dartSobj.model_00.coord2_14.coord.transfer;
-    final float dx = dartPos.x - BOOTH_FRONT_X;
-    final float dz = dartPos.z - BOOTH_FRONT_Z;
+    final float dx = dartPos.x - NPC_POS_X;
+    final float dz = dartPos.z - NPC_POS_Z;
     final float distSq = dx * dx + dz * dz;
     final boolean isNear = distSq < (INTERACT_RADIUS * INTERACT_RADIUS);
 
-    // Show alert '!' indicator when player is in front of the counter
+    // Show alert '!' indicator when player is near the NPC
     if (state == DialogueState.IDLE) {
       npcSobj.showAlertIndicator_194 = isNear;
       npcSobj.alertIndicatorOffsetY_198 = 80;
@@ -160,6 +163,8 @@ public class LohanRaceNpc {
     switch (state) {
       case IDLE -> {
         if (isNear && cooldownTicks == 0 && PLATFORM.isActionPressed(INPUT_ACTION_SMAP_INTERACT.get())) {
+          LOGGER.info("LohanRaceNpc: Dart interacting at (%.1f, %.1f, %.1f), NPC at (%.1f, %.1f, %.1f)",
+              dartPos.x, dartPos.y, dartPos.z, NPC_POS_X, NPC_POS_Y, NPC_POS_Z);
           startDialogue();
         }
       }
@@ -194,7 +199,7 @@ public class LohanRaceNpc {
         final int selection = tbText0.selectionIndex_6c;
 
         if (selection >= 0) {
-          // Player selected an option!
+          // Player selected an option: 0 = "No, thank you.", 1 = "Let's try."
           handleSelectionResult(selection);
         }
       }
@@ -246,28 +251,33 @@ public class LohanRaceNpc {
 
     // Set selection: Line 1 = "No, thank you.", Line 2 = "Let's try."
     final TextboxText84 tbText0 = textboxText_800bdf38[0];
-    while (tbText0.charIndex_30 < tbText0.str_24.length()) {
+    while (tbText0.charIndex_30 < tbText0.str_24.length()
+        && tbText0.state_00 != TextboxTextState.CLOSE_TEXTBOX_15) {
       Text.processTextboxCharacter(0);
     }
-    tbText0.state_00 = TextboxTextState.SELECTION_22;
     tbText0.flags_08 |= TextboxText84.SELECTION;
     tbText0.minSelectionLine_72 = 1;
     tbText0.maxSelectionLine_70 = 2;
     tbText0.selectionLine_68 = 1; // Default cursor on "No, thank you."
     tbText0.selectionIndex_6c = -1;
 
+    // Transition timer gives a brief delay so the player's button press from the greeting
+    // doesn't immediately confirm the selection
+    tbText0.ticksUntilStateTransition_64 = 10;
+    tbText0.stateAfterTransition_78 = TextboxTextState.SELECTION_22;
+    tbText0.state_00 = TextboxTextState.TRANSITION_AFTER_TIMEOUT_23;
+
     LOGGER.info("LohanRaceNpc: Opened choice menu (tickets=%d).", tickets);
   }
 
   private static void handleSelectionResult(final int selectedLine) {
-    clearTextbox(1);
-    clearTextboxText(1);
+    safelyClearTextbox(1);
 
-    if (selectedLine == 1) {
+    if (selectedLine == 0) {
       // "No, thank you." chosen
       LOGGER.info("LohanRaceNpc: Player chose 'No, thank you.'.");
       closeDialogue();
-    } else if (selectedLine == 2) {
+    } else if (selectedLine == 1) {
       // "Let's try." chosen
       final int tickets = getHeroTickets();
       LOGGER.info("LohanRaceNpc: Player chose 'Let's try.' (tickets=%d).", tickets);
@@ -288,12 +298,24 @@ public class LohanRaceNpc {
     state = DialogueState.IDLE;
     cooldownTicks = 20;
 
-    clearTextbox(0);
-    clearTextboxText(0);
-    clearTextbox(1);
-    clearTextboxText(1);
+    safelyClearTextbox(0);
+    safelyClearTextbox(1);
 
     LOGGER.info("LohanRaceNpc: Dialogue closed.");
+  }
+
+  private static void safelyClearTextbox(final int index) {
+    try {
+      clearTextbox(index);
+      clearTextboxText(index);
+
+      final TextboxText84 tbText = textboxText_800bdf38[index];
+      tbText.state_00 = TextboxTextState.UNINITIALIZED_0;
+      tbText.chars_58 = null;
+
+      final Textbox4c tb = textboxes_800be358[index];
+      tb.state_00 = TextboxState.UNINITIALIZED_0;
+    } catch (final Throwable ignored) {}
   }
 
   private static int getHeroTickets() {
@@ -306,8 +328,7 @@ public class LohanRaceNpc {
   }
 
   private static void openNamedTextbox(final int index, final int x, final int y, final int chars, final int lines, final String name, final String text) {
-    clearTextbox(index);
-    clearTextboxText(index);
+    safelyClearTextbox(index);
 
     final Textbox4c textbox = textboxes_800be358[index];
     final TextboxText84 textboxText = textboxText_800bdf38[index];
@@ -337,8 +358,7 @@ public class LohanRaceNpc {
   }
 
   private static void openSimpleTextbox(final int index, final int x, final int y, final int chars, final int lines, final String text) {
-    clearTextbox(index);
-    clearTextboxText(index);
+    safelyClearTextbox(index);
 
     final Textbox4c textbox = textboxes_800be358[index];
     final TextboxText84 textboxText = textboxText_800bdf38[index];
@@ -353,7 +373,7 @@ public class LohanRaceNpc {
     textbox.height_1e = textbox.lines_1a * 6;
 
     textboxText.type_04 = TextboxType.SIMPLE.id;
-    textboxText.flags_08 = 0;
+    textboxText.flags_08 = TextboxText84.NO_INPUT;
     textboxText.str_24 = new LodString(text);
     textboxText.chars_1c = textbox.chars_18 - 1;
     textboxText.lines_1e = lines;
@@ -362,14 +382,19 @@ public class LohanRaceNpc {
     textboxText.charIndex_30 = 0;
     textboxText.charX_34 = 0;
     textboxText.charY_36 = 0;
-    textboxText.state_00 = TextboxTextState.PROCESS_TEXT_4;
 
     calculateAppropriateTextboxBounds(index, x, y);
 
-    // Fast process all characters for simple static textbox
-    while (textboxText.charIndex_30 < textboxText.str_24.length()) {
-      Text.processTextboxCharacter(index);
+    // Directly populate characters so this passive info box doesn't consume input or crash
+    for (int i = 0; i < text.length() && i < textboxText.chars_1c; i++) {
+      final int c = LodString.toLodChar(text.charAt(i));
+      final TextboxChar08 chr = textboxText.chars_58[i];
+      chr.x_00 = i * 9;
+      chr.y_02 = 0;
+      chr.colour_04 = TextColour.WHITE;
+      chr.char_06 = c;
     }
+    textboxText.state_00 = TextboxTextState.PROCESS_NO_INPUT_ADVANCED_13;
   }
 
   private static LodString buildNamedLodString(final String name, final String text) {
