@@ -35,6 +35,7 @@ import static legend.game.Scus94491BpeSegment_800b.sobjPositions_800bd818;
 import static legend.game.Text.calculateAppropriateTextboxBounds;
 import static legend.game.Text.clearTextbox;
 import static legend.game.Text.clearTextboxText;
+import static legend.game.Text.setTextboxArrowPosition;
 import static legend.game.Text.textboxes_800be358;
 import static legend.game.Text.textboxText_800bdf38;
 import static legend.lodmod.LodMod.INPUT_ACTION_SMAP_INTERACT;
@@ -44,14 +45,16 @@ public class LohanRaceNpc {
 
   public static final int LOHAN_CUT = 151;
 
-  // NPC position at the empty booth counter on the right, matching user's red stick figure
-  public static final float NPC_POS_X = 350.0f;
+  // Vendor position inside this empty booth behind the counter
+  public static final float NPC_POS_X = 325.0f;
   public static final float NPC_POS_Y = -4.0f;
-  public static final float NPC_POS_Z = 235.0f;
-  public static final float NPC_ROT_Y = 3.8f; // Facing northwest towards Dart and walkway
+  public static final float NPC_POS_Z = 185.0f;
+  public static final float NPC_ROT_Y = 3.9f; // Facing northwest towards Dart in front of counter
 
-  // Player interaction trigger area
-  public static final float INTERACT_RADIUS = 95.0f;
+  // Interaction trigger zone strictly at this booth counter (where Dart stands in screenshot)
+  public static final float BOOTH_FRONT_X = 288.7f;
+  public static final float BOOTH_FRONT_Z = 201.3f;
+  public static final float INTERACT_RADIUS = 38.0f; // Constrained so it NEVER triggers in the other vendor's booth
 
   public enum DialogueState {
     IDLE,
@@ -133,7 +136,8 @@ public class LohanRaceNpc {
     final SubmapObject210 npcSobj = npcState.innerStruct_00;
     final SubmapObject210 dartSobj = dartState.innerStruct_00;
 
-    // Ensure NPC stays in position at booth counter
+    // Ensure NPC stays in position inside the booth counter
+    npcSobj.hidden_128 = false;
     npcSobj.model_00.coord2_14.coord.transfer.set(NPC_POS_X, NPC_POS_Y, NPC_POS_Z);
 
     if (templateIndexUsed >= 0 && templateIndexUsed < retail.uvAdjustments.size()) {
@@ -141,20 +145,22 @@ public class LohanRaceNpc {
     }
 
     final Vector3f dartPos = dartSobj.model_00.coord2_14.coord.transfer;
-    final float dx = dartPos.x - NPC_POS_X;
-    final float dz = dartPos.z - NPC_POS_Z;
+    final float dx = dartPos.x - BOOTH_FRONT_X;
+    final float dz = dartPos.z - BOOTH_FRONT_Z;
     final float distSq = dx * dx + dz * dz;
     final boolean isNear = distSq < (INTERACT_RADIUS * INTERACT_RADIUS);
 
-    // Show alert '!' indicator when player is near the NPC
+    // Show alert '!' indicator when player is at this booth counter
     if (state == DialogueState.IDLE) {
       npcSobj.showAlertIndicator_194 = isNear;
       npcSobj.alertIndicatorOffsetY_198 = 80;
       npcSobj.model_00.coord2_14.transforms.rotate.y = NPC_ROT_Y;
     } else {
       npcSobj.showAlertIndicator_194 = false;
-      // Turn NPC to face Dart during conversation
+      // Turn NPC to face Dart across the counter
       npcSobj.model_00.coord2_14.transforms.rotate.y = MathHelper.positiveAtan2(dartPos.z - NPC_POS_Z, dartPos.x - NPC_POS_X);
+      // Turn Dart to face the NPC across the counter
+      dartSobj.model_00.coord2_14.transforms.rotate.y = MathHelper.positiveAtan2(NPC_POS_Z - dartPos.z, NPC_POS_X - dartPos.x);
       // Freeze Dart during conversation
       dartSobj.movementType_170 = 0;
     }
@@ -163,8 +169,8 @@ public class LohanRaceNpc {
     switch (state) {
       case IDLE -> {
         if (isNear && cooldownTicks == 0 && PLATFORM.isActionPressed(INPUT_ACTION_SMAP_INTERACT.get())) {
-          LOGGER.info("LohanRaceNpc: Dart interacting at (%.1f, %.1f, %.1f), NPC at (%.1f, %.1f, %.1f)",
-              dartPos.x, dartPos.y, dartPos.z, NPC_POS_X, NPC_POS_Y, NPC_POS_Z);
+          LOGGER.info("LohanRaceNpc: Dart interacting at (%.1f, %.1f, %.1f) at Race Booth counter",
+              dartPos.x, dartPos.y, dartPos.z);
           startDialogue();
         }
       }
@@ -174,6 +180,9 @@ public class LohanRaceNpc {
         // Advance characters
         if (tbText0.state_00 == TextboxTextState.PROCESS_TEXT_4 && tbText0.charIndex_30 < tbText0.str_24.length()) {
           Text.processTextboxCharacter(0);
+          if (tbText0.charIndex_30 >= tbText0.str_24.length() - 1) {
+            setTextboxArrowPosition(0, true);
+          }
         }
 
         // Wait for player confirm
@@ -187,6 +196,7 @@ public class LohanRaceNpc {
                 && tbText0.state_00 != TextboxTextState.CLOSE_TEXTBOX_15) {
               Text.processTextboxCharacter(0);
             }
+            setTextboxArrowPosition(0, true);
             cooldownTicks = 10;
           } else {
             showChoiceMenu();
@@ -221,7 +231,7 @@ public class LohanRaceNpc {
     state = DialogueState.GREETING;
     cooldownTicks = 15;
 
-    // Greeting Dialogue (Matching Image 2)
+    // Greeting Dialogue (Matching retail vendor style in Image 2)
     final String title = "Racing Minigame";
     final String body =
       "Would you like to play the\n" +
@@ -238,14 +248,14 @@ public class LohanRaceNpc {
 
     final int tickets = getHeroTickets();
 
-    // Top box (Image 3 style): "Ticket remaining  <count>"
-    openSimpleTextbox(1, 160, 110, 24, 1, "Ticket remaining  " + tickets);
+    // Top box (Matching Image 3 style): "Ticket remaining   <count>"
+    openSimpleTextbox(1, 160, 110, 24, 1, "Ticket remaining   " + tickets);
 
-    // Bottom box (Image 3 style): Title "Dart", choices "No, thank you." and "Let's try."
+    // Bottom box (Matching Image 3 style): Title "Dart", choices without quotation marks
     final String title = "Dart";
     final String choices =
-      "\"No, thank you.\"\n" +
-      "\"Let's try.\"";
+      "No, thank you.\n" +
+      "Let's try.";
 
     openNamedTextbox(0, 160, 175, 30, 3, title, choices);
 
@@ -287,6 +297,8 @@ public class LohanRaceNpc {
         cooldownTicks = 15;
         openNamedTextbox(0, 160, 165, 28, 2, "Dart", "I, I have no ticket.");
       } else {
+        // Deduct 1 ticket like other Lohan minigame vendors
+        deductHeroTicket();
         state = DialogueState.OUTCOME;
         cooldownTicks = 15;
         openNamedTextbox(0, 160, 165, 28, 2, "Racing Minigame", "Let's begin!");
@@ -325,6 +337,17 @@ public class LohanRaceNpc {
       }
     } catch (final Throwable ignored) {}
     return 0;
+  }
+
+  private static void deductHeroTicket() {
+    try {
+      if (gameState_800babc8 != null && gameState_800babc8.scriptData_08 != null) {
+        if (gameState_800babc8.scriptData_08[27] > 0) {
+          gameState_800babc8.scriptData_08[27]--;
+          LOGGER.info("LohanRaceNpc: Deducted 1 ticket. Tickets remaining: %d", gameState_800babc8.scriptData_08[27]);
+        }
+      }
+    } catch (final Throwable ignored) {}
   }
 
   private static void openNamedTextbox(final int index, final int x, final int y, final int chars, final int lines, final String name, final String text) {
