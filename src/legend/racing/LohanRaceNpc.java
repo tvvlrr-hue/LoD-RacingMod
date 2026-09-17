@@ -81,7 +81,7 @@ public class LohanRaceNpc {
     }
 
     try {
-      final int templateIndex = Math.min(5, objects.size() - 1);
+      final int templateIndex = Math.min(6, objects.size() - 1);
       final SubmapObject template = objects.get(templateIndex);
 
       final SubmapObject npcObj = new SubmapObject();

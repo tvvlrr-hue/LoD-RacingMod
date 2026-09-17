@@ -1,5 +1,6 @@
 package legend.racing;
 
+import legend.core.MathHelper;
 import legend.core.gpu.Bpp;
 import legend.core.gte.MV;
 import legend.core.renderer.MeshObj;
@@ -137,150 +138,120 @@ public class LohanRaceManager {
   // OFFICIAL PRE-CALCULATED RETAIL TRACK LANES (FROM DRGN21.BIN COLLISION DATA)
   // =========================================================================
 
-  // Cut 151: 17 waypoints per lane (starts near booth, up ramp to balcony, exits to 149)
-  // Hurdles at indices 7 and 9 (balcony logs)
+  // Cut 151: 9 waypoints per lane along the upper arena balcony (left to right)
+  // Hurdles at indices 3 and 6 (the log obstacles circled in red)
   private static final Waypoint[][] CUT_151_LANES = new Waypoint[][]{
-    // Lane 0 (NPC 1 - Left)
+    // Lane 0 (NPC 1 - Left / Inner Lane)
     new Waypoint[]{
-      new Waypoint(123.5f, -29.2f, -975.5f),
-      new Waypoint(161.8f, -25.8f, -923.2f),
-      new Waypoint(215.0f, -45.8f, -838.2f),
-      new Waypoint(260.8f, -59.5f, -728.8f),
-      new Waypoint(295.0f, -75.2f, -581.8f),
-      new Waypoint(315.0f, -99.2f, -453.8f),
-      new Waypoint(317.0f, -122.0f, -326.0f),
-      new Waypoint(292.2f, -153.8f, -148.2f, true), // Hurdle 1
-      new Waypoint(255.0f, -153.0f, -15.2f),
-      new Waypoint(204.8f, -139.0f, 110.0f, true),  // Hurdle 2
-      new Waypoint(125.0f, -115.2f, 231.2f),
-      new Waypoint(58.8f, -50.5f, 497.0f),
-      new Waypoint(-45.0f, -13.0f, 586.0f),
-      new Waypoint(-203.0f, 13.8f, 681.5f),
-      new Waypoint(-297.5f, 19.8f, 723.2f),
-      new Waypoint(-393.2f, 18.2f, 747.2f),
-      new Waypoint(-539.8f, 15.8f, 778.0f)
+      new Waypoint(132.4f, -145.0f, 535.9f),
+      new Waypoint(189.3f, -153.0f, 505.5f),
+      new Waypoint(258.6f, -168.0f, 478.7f),
+      new Waypoint(320.4f, -188.0f, 373.4f, true),  // Hurdle 1
+      new Waypoint(360.5f, -200.0f, 253.1f),
+      new Waypoint(415.7f, -210.0f, 172.8f),
+      new Waypoint(464.8f, -214.0f, 44.9f, true),   // Hurdle 2
+      new Waypoint(494.3f, -190.0f, -63.0f),
+      new Waypoint(519.2f, -170.0f, -242.2f)
     },
-    // Lane 1 (Player - Center)
+    // Lane 1 (Player - Center Lane)
     new Waypoint[]{
-      new Waypoint(136.0f, -33.0f, -995.5f),
-      new Waypoint(181.5f, -29.5f, -935.5f),
-      new Waypoint(235.8f, -48.8f, -847.8f),
-      new Waypoint(281.5f, -62.0f, -734.5f),
-      new Waypoint(318.2f, -79.8f, -585.2f),
-      new Waypoint(336.8f, -103.0f, -455.0f),
-      new Waypoint(337.2f, -125.8f, -324.8f),
-      new Waypoint(313.8f, -156.5f, -144.5f, true), // Hurdle 1
-      new Waypoint(274.2f, -157.8f, -6.2f),
-      new Waypoint(223.8f, -142.2f, 120.2f, true),  // Hurdle 2
-      new Waypoint(142.5f, -118.5f, 245.2f),
-      new Waypoint(74.8f, -53.0f, 514.5f),
-      new Waypoint(-31.2f, -16.5f, 603.2f),
-      new Waypoint(-191.2f, 13.0f, 703.2f),
-      new Waypoint(-292.2f, 19.0f, 746.5f),
-      new Waypoint(-388.8f, 17.5f, 767.0f),
-      new Waypoint(-535.5f, 15.2f, 796.0f)
+      new Waypoint(140.0f, -145.0f, 550.0f),
+      new Waypoint(196.0f, -153.0f, 520.0f),
+      new Waypoint(270.0f, -168.0f, 490.0f),
+      new Waypoint(335.0f, -188.0f, 380.0f, true),  // Hurdle 1
+      new Waypoint(375.0f, -200.0f, 260.0f),
+      new Waypoint(430.0f, -210.0f, 180.0f),
+      new Waypoint(480.0f, -214.0f, 50.0f, true),   // Hurdle 2
+      new Waypoint(510.0f, -190.0f, -60.0f),
+      new Waypoint(535.0f, -170.0f, -240.0f)
     },
-    // Lane 2 (NPC 2 - Right)
+    // Lane 2 (NPC 2 - Right / Outer Lane)
     new Waypoint[]{
-      new Waypoint(156.0f, -36.8f, -1008.2f),
-      new Waypoint(201.0f, -32.8f, -947.5f),
-      new Waypoint(257.2f, -51.8f, -857.8f),
-      new Waypoint(303.0f, -64.8f, -740.2f),
-      new Waypoint(342.5f, -84.2f, -588.5f),
-      new Waypoint(358.5f, -106.5f, -456.2f),
-      new Waypoint(358.8f, -129.8f, -323.5f),
-      new Waypoint(336.0f, -159.5f, -140.8f, true), // Hurdle 1
-      new Waypoint(294.8f, -163.0f, 3.2f),
-      new Waypoint(244.8f, -145.8f, 131.0f, true),  // Hurdle 2
-      new Waypoint(160.0f, -121.8f, 259.0f),
-      new Waypoint(90.2f, -55.8f, 531.5f),
-      new Waypoint(-18.0f, -20.0f, 620.0f),
-      new Waypoint(-179.0f, 12.5f, 725.5f),
-      new Waypoint(-286.8f, 18.2f, 768.8f),
-      new Waypoint(-384.0f, 16.8f, 787.2f),
-      new Waypoint(-531.0f, 14.5f, 814.5f)
+      new Waypoint(147.6f, -145.0f, 564.1f),
+      new Waypoint(202.7f, -153.0f, 534.5f),
+      new Waypoint(281.4f, -168.0f, 501.3f),
+      new Waypoint(349.6f, -188.0f, 386.6f, true),  // Hurdle 1
+      new Waypoint(389.5f, -200.0f, 266.9f),
+      new Waypoint(444.3f, -210.0f, 187.2f),
+      new Waypoint(495.2f, -214.0f, 55.1f, true),   // Hurdle 2
+      new Waypoint(525.7f, -190.0f, -57.0f),
+      new Waypoint(550.8f, -170.0f, -237.8f)
     }
   };
 
   // Cut 149: 8 waypoints per lane (market balcony, exits to 150)
-  // Hurdles at indices 4 and 6
+  // Hurdles at indices 2 and 5
   private static final Waypoint[][] CUT_149_LANES = new Waypoint[][]{
-    // Lane 0
+    // Lane 0 (NPC 1 - Left)
     new Waypoint[]{
-      new Waypoint(449.5f, -29.0f, 67.2f),
-      new Waypoint(301.0f, -49.2f, 90.8f),
-      new Waypoint(201.5f, -91.2f, 91.0f),
-      new Waypoint(55.5f, -157.2f, 86.2f),
-      new Waypoint(-105.5f, -160.5f, 18.0f, true),  // Hurdle 3
-      new Waypoint(-242.0f, -163.5f, -42.5f),
-      new Waypoint(-300.8f, -137.2f, -104.8f, true),// Hurdle 4
-      new Waypoint(-415.5f, -75.0f, -208.5f)
+      new Waypoint(117.9f, -205.0f, 93.8f),
+      new Waypoint(83.3f, -210.0f, 43.4f),
+      new Waypoint(-55.3f, -217.0f, 9.0f, true),    // Hurdle 3
+      new Waypoint(-166.7f, -216.0f, -51.6f),
+      new Waypoint(-296.8f, -215.0f, -111.6f),
+      new Waypoint(-385.4f, -171.0f, -164.2f, true),// Hurdle 4
+      new Waypoint(-460.6f, -135.0f, -269.4f),
+      new Waypoint(-522.1f, -100.0f, -301.8f)
     },
-    // Lane 1 (Player)
+    // Lane 1 (Player - Center)
     new Waypoint[]{
-      new Waypoint(448.2f, -26.0f, 51.0f),
-      new Waypoint(300.2f, -48.2f, 67.5f),
-      new Waypoint(203.0f, -90.2f, 72.5f),
-      new Waypoint(61.0f, -154.5f, 67.8f),
-      new Waypoint(-97.5f, -160.5f, 0.2f, true),   // Hurdle 3
-      new Waypoint(-229.5f, -163.5f, -59.2f),
-      new Waypoint(-289.2f, -137.2f, -117.2f, true),// Hurdle 4
-      new Waypoint(-401.8f, -75.0f, -222.8f)
+      new Waypoint(130.0f, -205.0f, 85.0f),
+      new Waypoint(90.0f, -210.0f, 30.0f),
+      new Waypoint(-50.0f, -217.0f, -5.0f, true),   // Hurdle 3
+      new Waypoint(-160.0f, -216.0f, -65.0f),
+      new Waypoint(-290.0f, -215.0f, -125.0f),
+      new Waypoint(-375.0f, -171.0f, -175.0f, true),// Hurdle 4
+      new Waypoint(-450.0f, -135.0f, -280.0f),
+      new Waypoint(-515.0f, -100.0f, -315.0f)
     },
-    // Lane 2
+    // Lane 2 (NPC 2 - Right)
     new Waypoint[]{
-      new Waypoint(447.2f, -22.8f, 34.5f),
-      new Waypoint(292.5f, -50.0f, 34.2f),
-      new Waypoint(204.2f, -89.2f, 54.2f),
-      new Waypoint(66.2f, -151.5f, 48.5f),
-      new Waypoint(-89.5f, -160.5f, -17.8f, true),  // Hurdle 3
-      new Waypoint(-217.0f, -163.5f, -76.0f),
-      new Waypoint(-276.5f, -137.2f, -130.8f, true),// Hurdle 4
-      new Waypoint(-386.5f, -75.0f, -238.2f)
+      new Waypoint(142.1f, -205.0f, 76.2f),
+      new Waypoint(96.7f, -210.0f, 16.6f),
+      new Waypoint(-44.7f, -217.0f, -19.0f, true),  // Hurdle 3
+      new Waypoint(-153.3f, -216.0f, -78.4f),
+      new Waypoint(-283.2f, -215.0f, -138.4f),
+      new Waypoint(-364.6f, -171.0f, -185.8f, true),// Hurdle 4
+      new Waypoint(-439.4f, -135.0f, -290.6f),
+      new Waypoint(-507.9f, -100.0f, -328.2f)
     }
   };
 
-  // Cut 150: 10 waypoints per lane (residential balcony, exits back to 151)
-  // Hurdles at indices 3 and 6
+  // Cut 150: 8 waypoints per lane (residential balcony, exits back to 151)
+  // Hurdles at indices 2 and 5
   private static final Waypoint[][] CUT_150_LANES = new Waypoint[][]{
-    // Lane 0
+    // Lane 0 (NPC 1 - Left)
     new Waypoint[]{
-      new Waypoint(-259.2f, -50.0f, -20.8f),
-      new Waypoint(-144.5f, -38.0f, -108.0f),
-      new Waypoint(-66.2f, -61.5f, -146.2f),
-      new Waypoint(26.2f, -103.8f, -200.2f, true),  // Hurdle 5
-      new Waypoint(100.8f, -114.2f, -237.5f),
-      new Waypoint(155.0f, -79.8f, -252.5f),
-      new Waypoint(246.5f, -29.5f, -262.8f, true),  // Hurdle 6
-      new Waypoint(328.0f, -33.5f, -263.0f),
-      new Waypoint(395.0f, -46.0f, -243.5f),
-      new Waypoint(462.0f, -93.0f, -209.0f)
+      new Waypoint(-147.9f, -144.0f, -299.8f),
+      new Waypoint(-79.4f, -152.0f, -290.0f),
+      new Waypoint(-29.7f, -158.0f, -294.2f, true), // Hurdle 5
+      new Waypoint(39.5f, -125.0f, -330.0f),
+      new Waypoint(123.2f, -112.0f, -299.7f),
+      new Waypoint(271.8f, -118.0f, -279.9f, true), // Hurdle 6
+      new Waypoint(411.6f, -122.0f, -264.9f),
+      new Waypoint(481.7f, -130.0f, -256.9f)
     },
-    // Lane 1 (Player)
+    // Lane 1 (Player - Center)
     new Waypoint[]{
-      new Waypoint(-275.0f, -52.0f, -27.0f),
-      new Waypoint(-159.2f, -42.5f, -127.5f),
-      new Waypoint(-72.2f, -63.2f, -162.0f),
-      new Waypoint(20.8f, -105.8f, -216.0f, true),  // Hurdle 5
-      new Waypoint(96.0f, -116.0f, -252.5f),
-      new Waypoint(148.2f, -84.5f, -261.5f),
-      new Waypoint(245.0f, -30.5f, -279.8f, true),  // Hurdle 6
-      new Waypoint(328.5f, -34.2f, -275.0f),
-      new Waypoint(399.2f, -48.0f, -261.0f),
-      new Waypoint(469.8f, -96.0f, -227.0f)
+      new Waypoint(-150.0f, -144.0f, -285.0f),
+      new Waypoint(-80.0f, -152.0f, -275.0f),
+      new Waypoint(-25.0f, -158.0f, -280.0f, true),  // Hurdle 5
+      new Waypoint(40.0f, -125.0f, -315.0f),
+      new Waypoint(120.0f, -112.0f, -285.0f),
+      new Waypoint(270.0f, -118.0f, -265.0f, true),  // Hurdle 6
+      new Waypoint(410.0f, -122.0f, -250.0f),
+      new Waypoint(480.0f, -130.0f, -242.0f)
     },
-    // Lane 2
+    // Lane 2 (NPC 2 - Right)
     new Waypoint[]{
-      new Waypoint(-290.0f, -54.8f, -43.8f),
-      new Waypoint(-174.2f, -44.5f, -136.5f),
-      new Waypoint(-78.5f, -65.5f, -178.0f),
-      new Waypoint(15.2f, -108.0f, -233.0f, true),  // Hurdle 5
-      new Waypoint(91.2f, -118.2f, -267.8f),
-      new Waypoint(144.0f, -86.8f, -277.2f),
-      new Waypoint(243.5f, -31.2f, -296.8f, true),  // Hurdle 6
-      new Waypoint(322.2f, -35.5f, -293.2f),
-      new Waypoint(403.2f, -49.8f, -278.8f),
-      new Waypoint(477.8f, -99.0f, -245.2f)
+      new Waypoint(-152.1f, -144.0f, -270.2f),
+      new Waypoint(-80.6f, -152.0f, -260.0f),
+      new Waypoint(-20.3f, -158.0f, -265.8f, true),  // Hurdle 5
+      new Waypoint(40.5f, -125.0f, -300.0f),
+      new Waypoint(116.8f, -112.0f, -270.3f),
+      new Waypoint(268.2f, -118.0f, -250.1f, true),  // Hurdle 6
+      new Waypoint(408.4f, -122.0f, -235.1f),
+      new Waypoint(478.3f, -130.0f, -227.1f)
     }
   };
 
@@ -414,14 +385,14 @@ public class LohanRaceManager {
 
     // Audio chimes for countdown
     if (countdownTicks == 90 || countdownTicks == 60 || countdownTicks == 30) {
-      playMenuSound(0); // Tick chime!
+      playMenuSound(0); // Subtle tick chime
     } else if (countdownTicks == 0) {
       playMenuSound(1); // GO chime!
       state = RaceState.RACING;
       LOGGER.info("LohanRaceManager: GO! Race started.");
     }
 
-    // Keep all contestants in place and camera locked onto starting line
+    // Keep all contestants lined up at the starting line and camera locked on
     if (currentEngineState_8004dd04 instanceof final SMap smap) {
       for (final Racer r : racers) {
         final Waypoint[] laneWaypoints = getLaneWaypoints(r.laneIndex);
@@ -450,10 +421,10 @@ public class LohanRaceManager {
       // Speed adjustments (boost / slow)
       if (r.boostTimer > 0) {
         r.boostTimer--;
-        r.currentSpeed = r.baseSpeed * 1.45f;
+        r.currentSpeed = r.baseSpeed * 1.40f;
       } else if (r.slowTimer > 0) {
         r.slowTimer--;
-        r.currentSpeed = r.baseSpeed * 0.45f;
+        r.currentSpeed = r.baseSpeed * 0.50f;
       } else {
         r.currentSpeed = r.baseSpeed;
       }
@@ -462,43 +433,38 @@ public class LohanRaceManager {
       final int upcomingHurdle = findUpcomingHurdle(r, waypoints);
       if (r.isPlayer && upcomingHurdle != -1) {
         final float dist = (float) upcomingHurdle - r.pathProgress;
-        final boolean inApproachZone = dist < 1.4f && dist > 0.08f;
+        final boolean inApproachZone = dist < 1.4f && dist > 0.05f && r.lastHurdleIndex != upcomingHurdle;
 
-        // Sound queue when alert indicator pops up
-        if (inApproachZone && !alertSoundPlayed) {
-          playMenuSound(2); // Classic alert chime!
-          alertSoundPlayed = true;
-        } else if (!inApproachZone && alertSoundPlayed && dist <= 0.08f) {
-          alertSoundPlayed = false;
-        }
-
-        // Show yellow "!" alert indicator above player creature
+        // Visual ! alert above player creature (silent and clean)
         setAlertIndicator(smap, PLAYER_SOBJ, inApproachZone);
 
-        // Player jump attempt
-        if (actionJustPressed && !r.isJumping && dist < 1.3f && dist > -0.2f) {
-          executeJump(r, dist < 0.95f && dist > 0.20f);
+        // Player jump attempt: anytime the alert is active, pressing interact registers a successful jump!
+        if (actionJustPressed && !r.isJumping && dist < 1.4f && dist >= -0.15f && r.lastHurdleIndex != upcomingHurdle) {
+          r.lastHurdleIndex = upcomingHurdle;
+          executeJump(r, true);
         }
       } else if (!r.isPlayer && upcomingHurdle != -1 && !r.isJumping) {
         // NPC hurdle jumping logic
         final float dist = (float) upcomingHurdle - r.pathProgress;
-        if (dist < 0.55f && dist > 0.15f && r.lastHurdleIndex != upcomingHurdle) {
-          final boolean success = Math.random() < (r.id == 0 ? 0.82 : 0.74);
+        if (dist < 0.60f && dist > 0.10f && r.lastHurdleIndex != upcomingHurdle) {
+          r.lastHurdleIndex = upcomingHurdle;
+          final boolean success = Math.random() < (r.id == 0 ? 0.82 : 0.76);
           executeJump(r, success);
         }
       }
 
-      // Missed hurdle timeout (stumble)
+      // Missed hurdle timeout (stumble) - only triggers if player completely missed hitting interact
       if (upcomingHurdle != -1 && !r.isJumping && r.lastHurdleIndex != upcomingHurdle) {
         final float dist = (float) upcomingHurdle - r.pathProgress;
-        if (dist <= 0.08f && dist >= -0.25f) {
-          executeJump(r, false); // Stumble penalty
+        if (dist <= 0.05f && dist >= -0.25f) {
+          r.lastHurdleIndex = upcomingHurdle;
+          executeJump(r, false); // Miss penalty
         }
       }
 
       // Jumping arc update
       if (r.isJumping) {
-        r.jumpProgress += 0.065f;
+        r.jumpProgress += 0.055f;
         if (r.jumpProgress >= 1.0f) {
           r.isJumping = false;
           r.jumpProgress = 0.0f;
@@ -519,7 +485,7 @@ public class LohanRaceManager {
       // Apply vertical jump arc
       if (r.isJumping) {
         final float jumpArc = (float) Math.sin(r.jumpProgress * Math.PI);
-        r.pos.y -= (r.jumpSucceeded ? 35.0f : 15.0f) * jumpArc;
+        r.pos.y -= (r.jumpSucceeded ? 22.0f : 10.0f) * jumpArc;
       }
     }
 
@@ -552,11 +518,10 @@ public class LohanRaceManager {
         }
       }
     } else {
-      r.slowTimer = 55; // Speed penalty / stumble
+      r.slowTimer = 50; // Speed penalty / stumble
       r.boostTimer = 0;
       if (r.isPlayer) {
-        playMenuSound(40); // Miss / buzzer sound!
-        jumpFeedbackText = "TOO SLOW!";
+        jumpFeedbackText = "MISSED!";
         feedbackTicks = 40;
         if (currentEngineState_8004dd04 instanceof final SMap smap) {
           setAlertIndicator(smap, PLAYER_SOBJ, false);
@@ -583,7 +548,7 @@ public class LohanRaceManager {
 
         sobj.model_00.coord2_14.coord.transfer.set(r.pos);
         sobj.model_00.coord2_14.transforms.rotate.set(r.rot);
-        sobj.animIndex_132 = r.isJumping ? (r.jumpSucceeded ? 3 : 5) : 1;
+        sobj.animIndex_132 = (state == RaceState.COUNTDOWN) ? 0 : (r.isJumping ? 3 : (r.slowTimer > 0 ? 5 : 2));
       }
     }
   }
@@ -717,10 +682,10 @@ public class LohanRaceManager {
     r.pos.y = p0.y + (p1.y - p0.y) * t;
     r.pos.z = p0.z + (p1.z - p0.z) * t;
 
-    // Face forward along the track trajectory (+ PI for TMD model forward orientation)
+    // Face forward along the track trajectory using Severed Chains standard
     final float dx = p1.x - p0.x;
     final float dz = p1.z - p0.z;
-    r.rot.y = (float) Math.atan2(dx, dz) + (float) Math.PI;
+    r.rot.y = MathHelper.positiveAtan2(dz, dx);
   }
 
   private static void setAlertIndicator(final SMap smap, final int sobjIndex, final boolean show) {
