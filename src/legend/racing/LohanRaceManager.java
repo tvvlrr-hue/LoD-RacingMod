@@ -6,6 +6,7 @@ import legend.game.EngineStates;
 import legend.game.Text;
 import legend.game.scripting.ScriptState;
 import legend.game.modding.coremod.CoreMod;
+import legend.game.submap.CollisionGeometry;
 import legend.game.submap.IndicatorMode;
 import legend.game.submap.RetailSubmap;
 import legend.game.submap.SMap;
@@ -21,6 +22,7 @@ import legend.game.types.TextboxState;
 import legend.game.types.TextboxText84;
 import legend.game.types.TextboxTextState;
 import legend.game.types.TextboxType;
+import legend.game.Scus94491BpeSegment_8005;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joml.Vector3f;
@@ -166,6 +168,20 @@ public class LohanRaceManager {
   private static Field inputPressedField = null;
   private static Field inputRepeatField = null;
   private static Field inputHeldField = null;
+  private static Field transitioningField = null;
+  private static Field collisionGeometryField = null;
+
+  private static CollisionGeometry getCollisionGeometry(final SMap smap) {
+    try {
+      if (collisionGeometryField == null) {
+        collisionGeometryField = SMap.class.getDeclaredField("collisionGeometry_800cbe08");
+        collisionGeometryField.setAccessible(true);
+      }
+      return (CollisionGeometry) collisionGeometryField.get(smap);
+    } catch (Throwable t) {
+      return null;
+    }
+  }
 
   // =========================================================================
   // TRACK WAYPOINTS FROM DRGN21.BIN COLLISION VERTEX DATA
@@ -489,6 +505,20 @@ public class LohanRaceManager {
   }
 
   public static void onSubmapLoad(final SMap smap, final RetailSubmap retail, final List<SubmapObject> objects) {
+    // Ensure racetrack exit ramp in Cut 151 has a door trigger back to Lohan town (Cut 150)
+    final CollisionGeometry col = getCollisionGeometry(smap);
+    if (retail.cut == 151 && col != null) {
+      try {
+        final int rampPrim = col.getClosestCollisionPrimitive(163.0f, -4.0f, -1120.0f);
+        if (rampPrim >= 0 && rampPrim < 64) {
+          col.addDoor(rampPrim, 150, 0);
+          LOGGER.info("LohanRaceManager: Added racetrack ramp exit door trigger to Cut 150 at primitive %d", rampPrim);
+        }
+      } catch (Throwable t) {
+        LOGGER.warn("LohanRaceManager: Could not add ramp exit door", t);
+      }
+    }
+
     // Handle deferred Dart restoration after race finishes and Cut 151 reloads
     if (pendingDartRestore && retail.cut == 151) {
       cut151Reloaded = true;
@@ -686,7 +716,29 @@ public class LohanRaceManager {
       }
     }
 
-    if (!isRaceActive()) {
+    if (!pendingDartRestore && !isRaceActive()) {
+      // Allow Dart to exit Cut 151 via racetrack ramp back to Lohan town (Cut 150)
+      if (currentEngineState_8004dd04 instanceof final SMap smap && smap.submap instanceof final RetailSubmap retail && retail.cut == 151) {
+        if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
+          final SubmapObject210 dart = smap.sobjs_800c6880[0].innerStruct_00;
+          final Vector3f dartPos = dart.model_00.coord2_14.coord.transfer;
+          if (dartPos.z < -1050.0f && dartPos.x > 80.0f && dartPos.x < 280.0f) {
+            try {
+              if (transitioningField == null) {
+                transitioningField = SMap.class.getDeclaredField("transitioning_800f7e4c");
+                transitioningField.setAccessible(true);
+              }
+              final boolean isTransitioning = transitioningField.getBoolean(smap);
+              if (!isTransitioning) {
+                LOGGER.info("LohanRaceManager: Player walked down racetrack exit ramp, transitioning to Cut 150.");
+                smap.mapTransition(150, 0);
+              }
+            } catch (Throwable t) {
+              LOGGER.warn("Could not check transitioning via reflection", t);
+            }
+          }
+        }
+      }
       return;
     }
 
@@ -1172,12 +1224,13 @@ public class LohanRaceManager {
       }
     }
 
-    // Always do a clean map transition back to Cut 151 scene 0.
-    // This freshly reloads all retail scripts, models, and roaming creatures.
+    // Always do a clean map transition back to Cut 151 scene 2.
+    // In retail LoD, Scene 2 is the entrance scene from Lohan town (Cut 150).
+    // Primitive 0 is the exit door, so entering with scene 2 avoids immediately landing on an exit trigger.
     pendingDartRestore = true;
     cut151Reloaded = false;
     dartRestoreFrames = 15;
-    smap.mapTransition(151, 0);
+    smap.mapTransition(151, 2);
   }
 
   private static void restoreDart(final SMap smap) {
@@ -1187,6 +1240,7 @@ public class LohanRaceManager {
       dart.hidden_128 = false;
       dart.disableAnimation_12a = false;
       dart.cameraAttached_178 = true;
+      dart.ignoreCollision_172 = 0;
       dart.model_00.coord2_14.coord.transfer.set(BOOTH_FRONT_POS);
       dart.model_00.coord2_14.transforms.rotate.set(0.0f, BOOTH_DART_ROT_Y, 0.0f);
       dart.movementStep_148.zero();
@@ -1197,6 +1251,22 @@ public class LohanRaceManager {
       dart.interpRotationTicksTotalY = 0;
       dart.rotationFrames_188 = 0;
       dart.animIndex_132 = 0;
+
+      final CollisionGeometry col = getCollisionGeometry(smap);
+      if (col != null) {
+        final int boothPrim = col.getClosestCollisionPrimitive(BOOTH_FRONT_POS.x, BOOTH_FRONT_POS.y, BOOTH_FRONT_POS.z);
+        dart.collidedPrimitiveIndex_16c = boothPrim;
+        Scus94491BpeSegment_8005.collidedPrimitiveIndex_80052c38 = boothPrim;
+      }
+
+      try {
+        if (transitioningField == null) {
+          transitioningField = SMap.class.getDeclaredField("transitioning_800f7e4c");
+          transitioningField.setAccessible(true);
+        }
+        transitioningField.setBoolean(smap, false);
+      } catch (Throwable ignored) {
+      }
       if (smap.submap != null && !smap.submap.objects.isEmpty() && dart.sobjIndex_12e < smap.submap.objects.size()) {
         final SubmapObject playerObj = smap.submap.objects.get(dart.sobjIndex_12e);
         if (!playerObj.animations.isEmpty()) {
