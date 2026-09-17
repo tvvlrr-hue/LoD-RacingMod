@@ -41,6 +41,7 @@ import static legend.game.Graphics.PopMatrix;
 import static legend.game.Graphics.worldToScreenMatrix_800c3548;
 import static legend.game.Models.loadModelStandardAnimation;
 import static legend.game.Scus94491BpeSegment_800b.gameState_800babc8;
+import static legend.game.Scus94491BpeSegment_800b.sobjPositions_800bd818;
 import static legend.game.Text.calculateAppropriateTextboxBounds;
 import static legend.game.Text.clearTextbox;
 import static legend.game.Text.clearTextboxText;
@@ -131,7 +132,11 @@ public class LohanRaceManager {
   private static boolean lastInteractPressed = false;
   private static boolean alertSoundPlayed = false;
   private static int lastAlertHurdleIndex = -1;
+  public static final Vector3f BOOTH_FRONT_POS = new Vector3f(145.0f, -4.0f, -845.0f);
+  public static final float BOOTH_DART_ROT_Y = 5.3947f; // Facing northeast toward vendor booth
   private static boolean pendingDartRestore = false;
+  private static boolean cut151Reloaded = false;
+  private static int dartRestoreFrames = 0;
   private static boolean isFirstPass = true;
   private static boolean lapCountedThisPass = false;
   private static IndicatorMode savedIndicatorMode = null;
@@ -486,9 +491,27 @@ public class LohanRaceManager {
   public static void onSubmapLoad(final SMap smap, final RetailSubmap retail, final List<SubmapObject> objects) {
     // Handle deferred Dart restoration after race finishes and Cut 151 reloads
     if (pendingDartRestore && retail.cut == 151) {
-      pendingDartRestore = false;
-      LOGGER.info("LohanRaceManager: Restoring Dart after race in Cut 151.");
-      restoreDart(smap);
+      cut151Reloaded = true;
+      LOGGER.info("LohanRaceManager: Preparing Dart in front of booth on Cut 151 load.");
+      if (sobjPositions_800bd818 != null && sobjPositions_800bd818.length > 0) {
+        sobjPositions_800bd818[0].pos_00.set(BOOTH_FRONT_POS);
+        sobjPositions_800bd818[0].rot_0c.set(0.0f, BOOTH_DART_ROT_Y, 0.0f);
+      }
+      try {
+        final Field modeField = SMap.class.getDeclaredField("playerPositionRestoreMode_800f7e24");
+        modeField.setAccessible(true);
+        modeField.setInt(smap, 2);
+
+        final Field mvField = SMap.class.getDeclaredField("playerPositionWhenLoadingSubmap_800c6ac0");
+        mvField.setAccessible(true);
+        final Object mvObj = mvField.get(smap);
+        if (mvObj instanceof MV mv) {
+          mv.transfer.set(BOOTH_FRONT_POS);
+        }
+      } catch (Throwable t) {
+        LOGGER.warn("Could not set playerPositionRestoreMode via reflection", t);
+      }
+
       startFadeEffect(2, 15);
       return;
     }
@@ -649,6 +672,20 @@ public class LohanRaceManager {
   }
 
   public static void onRender() {
+    if (pendingDartRestore && cut151Reloaded) {
+      if (currentEngineState_8004dd04 instanceof final SMap smap && smap.submap instanceof final RetailSubmap retail && retail.cut == 151) {
+        if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
+          restoreDart(smap);
+          dartRestoreFrames--;
+          if (dartRestoreFrames <= 0) {
+            pendingDartRestore = false;
+            cut151Reloaded = false;
+            LOGGER.info("LohanRaceManager: Dart restoration complete in front of booth.");
+          }
+        }
+      }
+    }
+
     if (!isRaceActive()) {
       return;
     }
@@ -1138,24 +1175,35 @@ public class LohanRaceManager {
     // Always do a clean map transition back to Cut 151 scene 0.
     // This freshly reloads all retail scripts, models, and roaming creatures.
     pendingDartRestore = true;
+    cut151Reloaded = false;
+    dartRestoreFrames = 15;
     smap.mapTransition(151, 0);
   }
 
   private static void restoreDart(final SMap smap) {
-    LOGGER.info("LohanRaceManager: Restoring Dart in front of vendor booth.");
-
     if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
       final ScriptState<SubmapObject210> dartState = smap.sobjs_800c6880[0];
       final SubmapObject210 dart = dartState.innerStruct_00;
       dart.hidden_128 = false;
       dart.disableAnimation_12a = false;
       dart.cameraAttached_178 = true;
-      dart.model_00.coord2_14.coord.transfer.set(dartSavedPos);
-      dart.model_00.coord2_14.transforms.rotate.set(dartSavedRot);
-      dartState.resume();
-      if (dartState.ticker_04 != null) {
-        dartState.ticker_04.accept(dartState, dart);
+      dart.model_00.coord2_14.coord.transfer.set(BOOTH_FRONT_POS);
+      dart.model_00.coord2_14.transforms.rotate.set(0.0f, BOOTH_DART_ROT_Y, 0.0f);
+      dart.movementStep_148.zero();
+      dart.interpMovementTicks = 0;
+      dart.interpMovementTicksTotal = 0;
+      dart.movementTicks_144 = 0;
+      dart.movementType_170 = 0;
+      dart.interpRotationTicksTotalY = 0;
+      dart.rotationFrames_188 = 0;
+      dart.animIndex_132 = 0;
+      if (smap.submap != null && !smap.submap.objects.isEmpty() && dart.sobjIndex_12e < smap.submap.objects.size()) {
+        final SubmapObject playerObj = smap.submap.objects.get(dart.sobjIndex_12e);
+        if (!playerObj.animations.isEmpty()) {
+          loadModelStandardAnimation(dart.model_00, playerObj.animations.get(0));
+        }
       }
+      dartState.resume();
 
       // Direct camera to Dart without re-hiding Dart
       try {
@@ -1164,7 +1212,7 @@ public class LohanRaceManager {
           setCameraPosMethod = SMap.class.getDeclaredMethod("setCameraPos", int.class, Vector3f.class);
           setCameraPosMethod.setAccessible(true);
         }
-        setCameraPosMethod.invoke(smap, 1, dartSavedPos);
+        setCameraPosMethod.invoke(smap, 1, BOOTH_FRONT_POS);
       } catch (Throwable ignored) {
       }
     }
