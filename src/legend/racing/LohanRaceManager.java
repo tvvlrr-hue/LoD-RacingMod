@@ -98,6 +98,7 @@ public class LohanRaceManager {
     public final Vector3f rot = new Vector3f();
     public float groundY;
     public boolean isJumping;
+    public boolean jumpQueued;
     public float jumpProgress;
     public boolean jumpSucceeded;
     public int lastHurdleIndex = -1;
@@ -129,6 +130,7 @@ public class LohanRaceManager {
   private static String jumpFeedbackText = "";
   private static boolean lastInteractPressed = false;
   private static boolean alertSoundPlayed = false;
+  private static int lastAlertHurdleIndex = -1;
   private static boolean pendingDartRestore = false;
   private static boolean isFirstPass = true;
   private static boolean lapCountedThisPass = false;
@@ -179,198 +181,199 @@ public class LohanRaceManager {
   private static final Waypoint[][] CUT_151_START_LANES = new Waypoint[][]{
     // Lane 0 (NPC 1 - Inner Lane)
     new Waypoint[]{
-      new Waypoint( 355.0f,  -80.0f,  -715.0f),  // Green Line Banner
-      new Waypoint( 300.0f,  -61.0f,  -855.0f),  // Ramp mid
-      new Waypoint( 235.0f,  -36.0f,  -970.0f),  // Ramp lower
-      new Waypoint( 200.0f,  -41.0f, -1070.0f),  // Ramp foot
-      new Waypoint( 200.0f,  -46.0f, -1120.0f)   // Exit bottom into Cut 150
+      new Waypoint( 383.3f,  -79.3f,  -740.0f),  // Green Line Banner
+      new Waypoint( 324.0f,  -61.0f,  -885.3f),  // Ramp lower mid
+      new Waypoint( 252.8f,  -35.0f, -1000.3f),  // Ramp lower
+      new Waypoint( 193.0f,  -38.5f, -1080.8f),  // Ramp foot
+      new Waypoint( 163.0f,  -40.0f, -1120.0f)   // Exit bottom into Cut 150
     },
     // Lane 1 (Player - Center Lane)
     new Waypoint[]{
-      new Waypoint( 376.0f,  -80.0f,  -721.0f),  // Green Line Banner
-      new Waypoint( 322.0f,  -61.0f,  -859.0f),  // Ramp mid
-      new Waypoint( 251.0f,  -36.0f,  -975.0f),  // Ramp lower
-      new Waypoint( 220.0f,  -41.0f, -1072.0f),  // Ramp foot
-      new Waypoint( 218.0f,  -46.0f, -1121.0f)   // Exit bottom into Cut 150
+      new Waypoint( 425.5f,  -84.6f,  -751.6f),  // Green Line Banner
+      new Waypoint( 366.0f,  -66.9f,  -904.5f),  // Ramp lower mid
+      new Waypoint( 292.0f,  -42.0f, -1024.5f),  // Ramp lower
+      new Waypoint( 232.5f,  -46.0f, -1105.3f),  // Ramp foot
+      new Waypoint( 202.0f,  -48.0f, -1145.0f)   // Exit bottom into Cut 150
     },
     // Lane 2 (NPC 2 - Outer Lane)
     new Waypoint[]{
-      new Waypoint( 395.0f,  -80.0f,  -727.0f),  // Green Line Banner
-      new Waypoint( 340.0f,  -61.0f,  -865.0f),  // Ramp mid
-      new Waypoint( 270.0f,  -36.0f,  -980.0f),  // Ramp lower
-      new Waypoint( 240.0f,  -41.0f, -1075.0f),  // Ramp foot
-      new Waypoint( 235.0f,  -46.0f, -1122.0f)   // Exit bottom into Cut 150
+      new Waypoint( 469.8f,  -90.0f,  -763.8f),  // Green Line Banner
+      new Waypoint( 408.0f,  -72.3f,  -923.5f),  // Ramp lower mid
+      new Waypoint( 331.0f,  -49.0f, -1048.8f),  // Ramp lower
+      new Waypoint( 273.0f,  -53.5f, -1130.5f),  // Ramp foot
+      new Waypoint( 244.0f,  -55.0f, -1170.0f)   // Exit bottom into Cut 150
     }
   };
 
-  // Scene 2: Cut 150 (Bottom Scene: Water Jump) - Enters right platform, leaps water to wooden bridge, runs over elevated bridge past table to left exit.
-  // Takeoff at index 1 (Red dot on wooden platform before water gap) -> leaps across water to landing at index 2 (yellow dot at bridge ramp).
+  // Scene 2: Cut 150 (Bottom Scene: Water Jump) - Enters right platform, leaps water to wooden bridge, runs over elevated arched bridge past table to left exit.
+  // Takeoff at index 1 (Platform deck edge before water) -> leaps across water to landing at index 2 (bridge ramp foot).
   private static final Waypoint[][] CUT_150_LANES = new Waypoint[][]{
     // Lane 0 (NPC 1 - Inner Lane)
     new Waypoint[]{
-      new Waypoint( 290.0f,  -47.0f, -385.0f),        // Right platform enter
-      new Waypoint( 180.0f,  -42.0f, -355.0f, true),  // Red dot (Platform deck takeoff before water)
-      new Waypoint( -20.0f, -154.0f, -325.0f),        // Yellow dot (Bridge ramp landing across water)
-      new Waypoint( -50.0f, -163.0f, -310.0f),        // Ascending bridge ramp
-      new Waypoint(-115.0f, -144.0f, -275.0f),        // Bridge crest
-      new Waypoint(-160.0f, -125.0f, -245.0f),        // Foot of bridge onto wooden deck
-      new Waypoint(-240.0f,  -90.0f, -210.0f),        // Deck past table
-      new Waypoint(-345.0f,  -60.0f, -150.0f),        // Deck ramp
-      new Waypoint(-530.0f,  -72.0f,  -35.0f)         // Exit left into Cut 149
+      new Waypoint( 388.6f,  -61.5f, -349.4f),        // Station 0: Platform enter
+      new Waypoint( 286.7f,  -46.8f, -378.3f, true),  // Station 1: Platform takeoff before water (Green Takeoff)
+      new Waypoint(  46.4f, -112.6f, -342.9f),        // Station 2: Bridge ramp foot landing across water (Green Landing)
+      new Waypoint(   8.4f, -136.0f, -324.5f),        // Station 3: Bridge ramp lower ascending
+      new Waypoint( -30.2f, -157.1f, -313.6f),        // Station 4: Bridge ramp mid
+      new Waypoint( -65.6f, -163.0f, -296.7f),        // Station 5: Bridge ramp upper approach
+      new Waypoint(-100.6f, -151.0f, -279.7f),        // Station 6: Approach to bridge crest
+      new Waypoint(-132.0f, -141.1f, -264.9f),        // Station 7: Bridge crest
+      new Waypoint(-161.2f, -138.0f, -251.4f),        // Station 8: Bridge crest descent start
+      new Waypoint(-185.9f, -126.0f, -235.6f),        // Station 9: Bridge arch mid descent
+      new Waypoint(-212.7f, -106.0f, -224.7f),        // Station 10: Bridge lower descent
+      new Waypoint(-246.4f,  -94.0f, -222.9f),        // Station 11: Bridge ramp lower
+      new Waypoint(-282.4f,  -88.0f, -215.7f),        // Station 12: Bottom of bridge ramp
+      new Waypoint(-325.7f,  -65.0f, -177.4f),        // Station 13: Transition from ramp onto deck
+      new Waypoint(-370.8f,  -52.1f, -131.6f),        // Station 14: Deck past table
+      new Waypoint(-522.4f,  -68.0f,  -15.0f)         // Station 15: Exit left into Cut 149
     },
     // Lane 1 (Player - Center Lane)
     new Waypoint[]{
-      new Waypoint( 290.0f,  -47.0f, -370.0f),        // Right platform enter
-      new Waypoint( 180.0f,  -42.0f, -340.0f, true),  // Red dot (Platform deck takeoff before water)
-      new Waypoint( -20.0f, -154.0f, -310.0f),        // Yellow dot (Bridge ramp landing across water)
-      new Waypoint( -50.0f, -163.0f, -295.0f),        // Ascending bridge ramp
-      new Waypoint(-115.0f, -144.0f, -260.0f),        // Bridge crest
-      new Waypoint(-160.0f, -125.0f, -230.0f),        // Foot of bridge onto wooden deck
-      new Waypoint(-240.0f,  -90.0f, -195.0f),        // Deck past table
-      new Waypoint(-345.0f,  -60.0f, -135.0f),        // Deck ramp
-      new Waypoint(-530.0f,  -72.0f,  -20.0f)         // Exit left into Cut 149
+      new Waypoint( 380.2f,  -61.5f, -317.5f),        // Station 0: Platform enter
+      new Waypoint( 286.1f,  -46.8f, -342.3f, true),  // Station 1: Platform takeoff before water (Green Takeoff)
+      new Waypoint(  48.6f, -112.6f, -323.0f),        // Station 2: Bridge ramp foot landing across water (Green Landing)
+      new Waypoint(  12.0f, -136.0f, -312.0f),        // Station 3: Bridge ramp lower ascending
+      new Waypoint( -25.6f, -157.1f, -301.4f),        // Station 4: Bridge ramp mid
+      new Waypoint( -60.0f, -163.0f, -285.0f),        // Station 5: Bridge ramp upper approach
+      new Waypoint( -95.0f, -151.0f, -268.0f),        // Station 6: Approach to bridge crest
+      new Waypoint(-126.5f, -141.1f, -253.1f),        // Station 7: Bridge crest
+      new Waypoint(-155.0f, -138.0f, -240.0f),        // Station 8: Bridge crest descent start
+      new Waypoint(-180.0f, -126.0f, -224.0f),        // Station 9: Bridge arch mid descent
+      new Waypoint(-210.0f, -106.0f, -212.0f),        // Station 10: Bridge lower descent
+      new Waypoint(-245.0f,  -94.0f, -210.0f),        // Station 11: Bridge ramp lower
+      new Waypoint(-275.0f,  -88.0f, -205.0f),        // Station 12: Bottom of bridge ramp
+      new Waypoint(-310.0f,  -65.0f, -165.0f),        // Station 13: Transition from ramp onto deck
+      new Waypoint(-350.8f,  -52.1f, -109.3f),        // Station 14: Deck past table
+      new Waypoint(-504.1f,  -68.0f,    8.8f)         // Station 15: Exit left into Cut 149
     },
     // Lane 2 (NPC 2 - Outer Lane)
     new Waypoint[]{
-      new Waypoint( 290.0f,  -47.0f, -355.0f),        // Right platform enter
-      new Waypoint( 180.0f,  -42.0f, -325.0f, true),  // Red dot (Platform deck takeoff before water)
-      new Waypoint( -20.0f, -154.0f, -295.0f),        // Yellow dot (Bridge ramp landing across water)
-      new Waypoint( -50.0f, -163.0f, -280.0f),        // Ascending bridge ramp
-      new Waypoint(-115.0f, -144.0f, -245.0f),        // Bridge crest
-      new Waypoint(-160.0f, -125.0f, -215.0f),        // Foot of bridge onto wooden deck
-      new Waypoint(-240.0f,  -90.0f, -180.0f),        // Deck past table
-      new Waypoint(-345.0f,  -60.0f, -120.0f),        // Deck ramp
-      new Waypoint(-530.0f,  -72.0f,   -5.0f)         // Exit left into Cut 149
+      new Waypoint( 371.8f,  -61.5f, -285.6f),        // Station 0: Platform enter
+      new Waypoint( 285.5f,  -46.8f, -306.3f, true),  // Station 1: Platform takeoff before water (Green Takeoff)
+      new Waypoint(  50.8f, -112.6f, -303.1f),        // Station 2: Bridge ramp foot landing across water (Green Landing)
+      new Waypoint(  15.6f, -136.0f, -299.5f),        // Station 3: Bridge ramp lower ascending
+      new Waypoint( -21.0f, -157.1f, -289.2f),        // Station 4: Bridge ramp mid
+      new Waypoint( -54.4f, -163.0f, -273.3f),        // Station 5: Bridge ramp upper approach
+      new Waypoint( -89.4f, -151.0f, -256.3f),        // Station 6: Approach to bridge crest
+      new Waypoint(-121.0f, -141.1f, -241.3f),        // Station 7: Bridge crest
+      new Waypoint(-148.8f, -138.0f, -228.6f),        // Station 8: Bridge crest descent start
+      new Waypoint(-174.1f, -126.0f, -212.4f),        // Station 9: Bridge arch mid descent
+      new Waypoint(-207.3f, -106.0f, -199.3f),        // Station 10: Bridge lower descent
+      new Waypoint(-243.6f,  -94.0f, -197.1f),        // Station 11: Bridge ramp lower
+      new Waypoint(-267.6f,  -88.0f, -194.3f),        // Station 12: Bottom of bridge ramp
+      new Waypoint(-294.3f,  -65.0f, -152.6f),        // Station 13: Transition from ramp onto deck
+      new Waypoint(-330.8f,  -52.1f,  -87.0f),        // Station 14: Deck past table
+      new Waypoint(-485.8f,  -68.0f,   32.6f)         // Station 15: Exit left into Cut 149
     }
   };
 
-  // Scene 3: Cut 149 (Top Scene: Ticket Vendor Girl) - Left ramp -> booth roof -> gap jump -> archway roof -> barrier jump -> downward ramp.
-  // Hurdle 1 at index 4 (Red dot 1) -> leaps doorway gap to landing at index 5 (middle booth roof).
-  // Hurdle 2 at index 7 (Red dot 2 before barrier) -> leaps barrier to landing at index 8 (downward ramp).
+  // Scene 3: Cut 149 (Top Scene: Ticket Vendor Girl) - Left ramp -> booth roof platform -> doorway gap jump -> middle booth platform -> run across middle booth roof -> downward ramp -> barrier jump -> exit into Cut 151.
+  // Hurdle 1 at index 2 (Left roof platform) -> leaps across doorway opening to landing at index 3 (middle booth platform).
+  // Station 4 & 5 at index 4 & 5 (Middle booth roof peak & right edge) -> runs down onto downward ramp.
+  // Hurdle 2 at index 6 (Downward ramp before barrier) -> leaps over wooden barrier to landing at index 7 (downward ramp past barrier).
   private static final Waypoint[][] CUT_149_LANES = new Waypoint[][]{
     // Lane 0 (NPC 1 - Inner Lane)
     new Waypoint[]{
-      new Waypoint(-514.0f, -100.0f, -278.0f),        // Left entrance
-      new Waypoint(-386.0f, -171.0f, -167.0f),        // Left ramp ascending 1
-      new Waypoint(-312.0f, -218.0f,  -87.0f),        // Left ramp ascending 2
-      new Waypoint(-230.0f, -218.0f,  -34.0f),        // Left ramp upper approach
-      new Waypoint( -75.0f, -217.0f,  -14.0f, true),  // Red dot 1 (Doorway gap takeoff)
-      new Waypoint(  95.0f, -212.0f,   41.0f),        // Middle booth roof landing
-      new Waypoint( 135.0f, -202.0f,   38.0f),        // Middle booth roof run
-      new Waypoint( 155.0f, -195.0f,   41.0f, true),  // Red dot 2 (Barrier takeoff)
-      new Waypoint( 290.0f, -134.0f,   61.0f),        // Downward ramp landing
-      new Waypoint( 328.0f, -111.0f,   43.0f),        // Downward ramp upper
-      new Waypoint( 424.0f,  -72.0f,   46.0f),        // Downward ramp mid
-      new Waypoint( 454.0f,  -61.0f,   36.0f),        // Downward ramp lower
-      new Waypoint( 618.0f,  -34.0f,   26.0f)         // Exit right into Cut 151
+      new Waypoint(-458.3f, -100.0f, -349.8f),        // Station 0: Left entrance
+      new Waypoint(-315.5f, -180.0f, -202.3f),        // Station 1: Left ramp ascending
+      new Waypoint(-237.8f, -218.0f, -133.5f, true),  // Station 2: Left roof takeoff (Doorway gap takeoff)
+      new Waypoint( -72.5f, -212.5f,  -57.8f),        // Station 3: Middle booth platform (Doorway gap landing)
+      new Waypoint( 130.5f, -201.0f,   34.0f),        // Station 4: Middle booth roof peak (Traverse peak)
+      new Waypoint( 165.0f, -195.0f,   37.0f),        // Station 5: Middle booth roof right (Traverse right)
+      new Waypoint( 311.0f, -121.3f,   40.5f, true),  // Station 6: Upper ramp before barrier (Barrier takeoff)
+      new Waypoint( 438.0f,  -64.5f,   31.5f),        // Station 7: Ramp past barrier (Barrier landing)
+      new Waypoint( 632.8f,  -26.8f,   19.0f)         // Station 8: Exit right into Cut 151
     },
     // Lane 1 (Player - Center Lane)
     new Waypoint[]{
-      new Waypoint(-514.0f, -100.0f, -264.0f),        // Left entrance
-      new Waypoint(-386.0f, -171.0f, -153.0f),        // Left ramp ascending 1
-      new Waypoint(-312.0f, -218.0f,  -73.0f),        // Left ramp ascending 2
-      new Waypoint(-230.0f, -218.0f,  -20.0f),        // Left ramp upper approach
-      new Waypoint( -75.0f, -217.0f,    0.0f, true),  // Red dot 1 (Doorway gap takeoff)
-      new Waypoint(  95.0f, -212.0f,   55.0f),        // Middle booth roof landing
-      new Waypoint( 135.0f, -202.0f,   52.0f),        // Middle booth roof run
-      new Waypoint( 155.0f, -195.0f,   55.0f, true),  // Red dot 2 (Barrier takeoff)
-      new Waypoint( 290.0f, -134.0f,   75.0f),        // Downward ramp landing
-      new Waypoint( 328.0f, -111.0f,   57.0f),        // Downward ramp upper
-      new Waypoint( 424.0f,  -72.0f,   60.0f),        // Downward ramp mid
-      new Waypoint( 454.0f,  -61.0f,   50.0f),        // Downward ramp lower
-      new Waypoint( 618.0f,  -34.0f,   40.0f)         // Exit right into Cut 151
+      new Waypoint(-489.9f, -100.0f, -317.9f),        // Station 0: Left entrance
+      new Waypoint(-341.0f, -180.0f, -175.0f),        // Station 1: Left ramp ascending
+      new Waypoint(-262.4f, -218.0f, -100.6f, true),  // Station 2: Left roof takeoff (Doorway gap takeoff)
+      new Waypoint( -89.0f, -212.5f,  -20.3f),        // Station 3: Middle booth platform (Doorway gap landing)
+      new Waypoint( 119.9f, -206.5f,   72.1f),        // Station 4: Middle booth roof peak (Traverse peak)
+      new Waypoint( 165.0f, -195.0f,   73.5f),        // Station 5: Middle booth roof right (Traverse right)
+      new Waypoint( 308.4f, -123.4f,   79.1f, true),  // Station 6: Upper ramp before barrier (Barrier takeoff)
+      new Waypoint( 438.8f,  -66.0f,   72.9f),        // Station 7: Ramp past barrier (Barrier landing)
+      new Waypoint( 635.0f,  -33.4f,   53.6f)         // Station 8: Exit right into Cut 151
     },
     // Lane 2 (NPC 2 - Outer Lane)
     new Waypoint[]{
-      new Waypoint(-514.0f, -100.0f, -250.0f),        // Left entrance
-      new Waypoint(-386.0f, -171.0f, -139.0f),        // Left ramp ascending 1
-      new Waypoint(-312.0f, -218.0f,  -59.0f),        // Left ramp ascending 2
-      new Waypoint(-230.0f, -218.0f,   -6.0f),        // Left ramp upper approach
-      new Waypoint( -75.0f, -217.0f,   14.0f, true),  // Red dot 1 (Doorway gap takeoff)
-      new Waypoint(  95.0f, -212.0f,   69.0f),        // Middle booth roof landing
-      new Waypoint( 135.0f, -202.0f,   66.0f),        // Middle booth roof run
-      new Waypoint( 155.0f, -195.0f,   69.0f, true),  // Red dot 2 (Barrier takeoff)
-      new Waypoint( 290.0f, -134.0f,   89.0f),        // Downward ramp landing
-      new Waypoint( 328.0f, -111.0f,   71.0f),        // Downward ramp upper
-      new Waypoint( 424.0f,  -72.0f,   74.0f),        // Downward ramp mid
-      new Waypoint( 454.0f,  -61.0f,   64.0f),        // Downward ramp lower
-      new Waypoint( 618.0f,  -34.0f,   54.0f)         // Exit right into Cut 151
+      new Waypoint(-518.0f, -100.0f, -289.3f),        // Station 0: Left entrance
+      new Waypoint(-364.8f, -180.0f, -149.5f),        // Station 1: Left ramp ascending
+      new Waypoint(-287.5f, -218.0f,  -67.3f, true),  // Station 2: Left roof takeoff (Doorway gap takeoff)
+      new Waypoint(-104.8f, -212.5f,   15.0f),        // Station 3: Middle booth platform (Doorway gap landing)
+      new Waypoint( 109.0f, -212.3f,  109.5f),        // Station 4: Middle booth roof peak (Traverse peak)
+      new Waypoint( 165.0f, -195.0f,  112.0f),        // Station 5: Middle booth roof right (Traverse right)
+      new Waypoint( 305.5f, -125.5f,  116.3f, true),  // Station 6: Upper ramp before barrier (Barrier takeoff)
+      new Waypoint( 439.8f,  -67.8f,  118.0f),        // Station 7: Ramp past barrier (Barrier landing)
+      new Waypoint( 637.3f,  -39.8f,   87.0f)         // Station 8: Exit right into Cut 151
     }
   };
 
   // Scene 4: Cut 151 (Full Track for subsequent laps) - Starts on catwalk in plain view approaching Hurdle 1.
-  // Hurdle 1 at index 1 (Red dot 1 before log 1).
-  // Hurdle 2 at index 3 (Red dot 2 before log 2).
+  // Hurdle 1 at index 1 (Log 1 takeoff).
+  // Hurdle 2 at index 3 (Log 2 takeoff).
   // Curves smoothly along circular catwalk, enters ramp, crosses Green Line banner (Finish Line) to count lap, and exits into Cut 150.
   private static final Waypoint[][] CUT_151_FULL_LANES = new Waypoint[][]{
     // Lane 0 (NPC 1 - Inner Lane)
     new Waypoint[]{
-      new Waypoint(-261.0f,   22.0f, 1142.0f),        // Station 0: Catwalk approach
-      new Waypoint(-215.0f,   16.5f, 1165.0f, true),  // Station 1: Red dot 1 (Log 1 takeoff)
-      new Waypoint( -31.0f,  -17.0f, 1048.0f),        // Station 2: Log 1 landing
-      new Waypoint(  -2.0f,  -27.0f, 1027.0f, true),  // Station 3: Red dot 2 (Log 2 takeoff)
-      new Waypoint( 111.0f,  -66.0f,  935.0f),        // Station 4: Log 2 landing
-      new Waypoint( 142.0f,  -75.0f,  906.0f),        // Station 5: Catwalk descending 1
-      new Waypoint( 174.0f, -115.0f,  736.0f),        // Station 6: Catwalk descending 2
-      new Waypoint( 210.0f, -155.0f,  580.0f),        // Station 7: Catwalk curve 1
-      new Waypoint( 270.0f, -178.0f,  390.0f),        // Station 8: Catwalk curve 2
-      new Waypoint( 360.0f, -206.0f,  235.0f),        // Station 9: Catwalk curve 3
-      new Waypoint( 405.0f, -214.0f,  215.0f),        // Station 10: Catwalk curve 4
-      new Waypoint( 445.0f, -210.0f,   60.0f),        // Station 11: Catwalk curve 5
-      new Waypoint( 450.0f, -168.0f, -185.0f),        // Station 12: Catwalk into upper ramp
-      new Waypoint( 420.0f, -127.0f, -385.0f),        // Station 13: Ramp upper
-      new Waypoint( 400.0f, -101.0f, -525.0f),        // Station 14: Ramp mid
-      new Waypoint( 355.0f,  -80.0f, -715.0f, false, true), // Station 15: Green Line Banner (Lap Finish!)
-      new Waypoint( 300.0f,  -61.0f, -855.0f),        // Station 16: Ramp past banner
-      new Waypoint( 235.0f,  -36.0f, -970.0f),        // Station 17: Ramp lower
-      new Waypoint( 200.0f,  -41.0f, -1070.0f),       // Station 18: Ramp foot
-      new Waypoint( 200.0f,  -46.0f, -1120.0f)        // Station 19: Exit bottom into Cut 150
+      new Waypoint(-696.3f,   22.3f, 1271.3f),        // Station 0: Catwalk approach (entrance)
+      new Waypoint(-501.0f,   25.5f, 1230.0f, true),  // Station 1: Log 1 takeoff (Green 1)
+      new Waypoint(-245.3f,   20.5f, 1144.5f),        // Station 2: Log 1 landing
+      new Waypoint(  -5.0f,  -22.0f, 1000.0f, true),  // Station 3: Log 2 takeoff (Green 2)
+      new Waypoint( 105.5f,  -65.0f,  899.5f),        // Station 4: Log 2 landing
+      new Waypoint( 195.0f, -151.8f,  544.8f),        // Station 5: Catwalk descending
+      new Waypoint( 302.8f, -183.5f,  382.5f),        // Station 6: Catwalk curve 1
+      new Waypoint( 370.3f, -203.5f,  215.3f),        // Station 7: Catwalk curve 2
+      new Waypoint( 421.8f, -204.3f,   37.0f),        // Station 8: Catwalk curve 3
+      new Waypoint( 455.5f, -163.0f, -201.3f),        // Station 9: Upper ramp 1
+      new Waypoint( 454.0f, -133.0f, -372.3f),        // Station 10: Upper ramp 2
+      new Waypoint( 428.3f, -101.0f, -543.5f),        // Station 11: Mid ramp
+      new Waypoint( 383.3f,  -79.3f, -740.0f, false, true), // Station 12: Green Line Banner (Lap Finish!)
+      new Waypoint( 324.0f,  -61.0f, -885.3f),        // Station 13: Ramp lower mid
+      new Waypoint( 252.8f,  -35.0f, -1000.3f),       // Station 14: Ramp lower
+      new Waypoint( 193.0f,  -38.5f, -1080.8f),       // Station 15: Ramp foot
+      new Waypoint( 163.0f,  -40.0f, -1120.0f)        // Station 16: Exit bottom into Cut 150
     },
     // Lane 1 (Player - Center Lane)
     new Waypoint[]{
-      new Waypoint(-250.0f,   22.0f, 1156.0f),        // Station 0: Catwalk approach
-      new Waypoint(-204.0f,   16.5f, 1179.0f, true),  // Station 1: Red dot 1 (Log 1 takeoff)
-      new Waypoint( -20.0f,  -17.0f, 1062.0f),        // Station 2: Log 1 landing
-      new Waypoint(   9.0f,  -27.0f, 1041.0f, true),  // Station 3: Red dot 2 (Log 2 takeoff)
-      new Waypoint( 122.0f,  -66.0f,  949.0f),        // Station 4: Log 2 landing
-      new Waypoint( 153.0f,  -75.0f,  920.0f),        // Station 5: Catwalk descending 1
-      new Waypoint( 185.0f, -115.0f,  750.0f),        // Station 6: Catwalk descending 2
-      new Waypoint( 218.0f, -155.0f,  589.0f),        // Station 7: Catwalk curve 1
-      new Waypoint( 281.0f, -178.0f,  393.0f),        // Station 8: Catwalk curve 2
-      new Waypoint( 375.0f, -206.0f,  238.0f),        // Station 9: Catwalk curve 3
-      new Waypoint( 418.0f, -214.0f,  217.0f),        // Station 10: Catwalk curve 4
-      new Waypoint( 461.0f, -210.0f,   62.0f),        // Station 11: Catwalk curve 5
-      new Waypoint( 468.0f, -168.0f, -185.0f),        // Station 12: Catwalk into upper ramp
-      new Waypoint( 437.0f, -127.0f, -386.0f),        // Station 13: Ramp upper
-      new Waypoint( 417.0f, -101.0f, -526.0f),        // Station 14: Ramp mid
-      new Waypoint( 376.0f,  -80.0f, -721.0f, false, true), // Station 15: Green Line Banner (Lap Finish!)
-      new Waypoint( 322.0f,  -61.0f, -859.0f),        // Station 16: Ramp past banner
-      new Waypoint( 251.0f,  -36.0f, -975.0f),        // Station 17: Ramp lower
-      new Waypoint( 220.0f,  -41.0f, -1072.0f),       // Station 18: Ramp foot
-      new Waypoint( 218.0f,  -46.0f, -1121.0f)        // Station 19: Exit bottom into Cut 150
+      new Waypoint(-687.5f,   21.0f, 1308.0f),        // Station 0: Catwalk approach (entrance)
+      new Waypoint(-491.8f,   24.0f, 1270.0f, true),  // Station 1: Log 1 takeoff (Green 1)
+      new Waypoint(-221.1f,   19.1f, 1188.6f),        // Station 2: Log 1 landing
+      new Waypoint(  10.0f,  -27.0f, 1035.0f, true),  // Station 3: Log 2 takeoff (Green 2)
+      new Waypoint( 136.9f,  -70.3f,  934.0f),        // Station 4: Log 2 landing
+      new Waypoint( 230.0f, -158.4f,  572.5f),        // Station 5: Catwalk descending
+      new Waypoint( 342.6f, -190.3f,  403.5f),        // Station 6: Catwalk curve 1
+      new Waypoint( 410.0f, -213.4f,  233.8f),        // Station 7: Catwalk curve 2
+      new Waypoint( 465.3f, -210.0f,   44.5f),        // Station 8: Catwalk curve 3
+      new Waypoint( 497.1f, -170.6f, -198.9f),        // Station 9: Upper ramp 1
+      new Waypoint( 497.4f, -140.3f, -374.9f),        // Station 10: Upper ramp 2
+      new Waypoint( 475.9f, -110.0f, -550.3f),        // Station 11: Mid ramp
+      new Waypoint( 425.5f,  -84.6f, -751.6f, false, true), // Station 12: Green Line Banner (Lap Finish!)
+      new Waypoint( 366.0f,  -66.9f, -904.5f),        // Station 13: Ramp lower mid
+      new Waypoint( 292.0f,  -42.0f, -1024.5f),       // Station 14: Ramp lower
+      new Waypoint( 232.5f,  -46.0f, -1105.3f),       // Station 15: Ramp foot
+      new Waypoint( 202.0f,  -48.0f, -1145.0f)        // Station 16: Exit bottom into Cut 150
     },
     // Lane 2 (NPC 2 - Outer Lane)
     new Waypoint[]{
-      new Waypoint(-239.0f,   22.0f, 1170.0f),        // Station 0: Catwalk approach
-      new Waypoint(-193.0f,   16.5f, 1193.0f, true),  // Station 1: Red dot 1 (Log 1 takeoff)
-      new Waypoint(  -9.0f,  -17.0f, 1076.0f),        // Station 2: Log 1 landing
-      new Waypoint(  20.0f,  -27.0f, 1055.0f, true),  // Station 3: Red dot 2 (Log 2 takeoff)
-      new Waypoint( 133.0f,  -66.0f,  963.0f),        // Station 4: Log 2 landing
-      new Waypoint( 164.0f,  -75.0f,  934.0f),        // Station 5: Catwalk descending 1
-      new Waypoint( 196.0f, -115.0f,  764.0f),        // Station 6: Catwalk descending 2
-      new Waypoint( 226.0f, -155.0f,  598.0f),        // Station 7: Catwalk curve 1
-      new Waypoint( 292.0f, -178.0f,  396.0f),        // Station 8: Catwalk curve 2
-      new Waypoint( 390.0f, -206.0f,  241.0f),        // Station 9: Catwalk curve 3
-      new Waypoint( 431.0f, -214.0f,  219.0f),        // Station 10: Catwalk curve 4
-      new Waypoint( 477.0f, -210.0f,   64.0f),        // Station 11: Catwalk curve 5
-      new Waypoint( 486.0f, -168.0f, -185.0f),        // Station 12: Catwalk into upper ramp
-      new Waypoint( 454.0f, -127.0f, -387.0f),        // Station 13: Ramp upper
-      new Waypoint( 434.0f, -101.0f, -527.0f),        // Station 14: Ramp mid
-      new Waypoint( 395.0f,  -80.0f, -727.0f, false, true), // Station 15: Green Line Banner (Lap Finish!)
-      new Waypoint( 340.0f,  -61.0f, -865.0f),        // Station 16: Ramp past banner
-      new Waypoint( 270.0f,  -36.0f, -980.0f),        // Station 17: Ramp lower
-      new Waypoint( 240.0f,  -41.0f, -1074.0f),       // Station 18: Ramp foot
-      new Waypoint( 236.0f,  -46.0f, -1122.0f)        // Station 19: Exit bottom into Cut 150
+      new Waypoint(-678.8f,   19.5f, 1344.8f),        // Station 0: Catwalk approach (entrance)
+      new Waypoint(-482.3f,   22.5f, 1309.0f, true),  // Station 1: Log 1 takeoff (Green 1)
+      new Waypoint(-197.0f,   18.0f, 1233.0f),        // Station 2: Log 1 landing
+      new Waypoint(  25.0f,  -30.0f, 1070.0f, true),  // Station 3: Log 2 takeoff (Green 2)
+      new Waypoint( 165.8f,  -74.8f,  966.3f),        // Station 4: Log 2 landing
+      new Waypoint( 263.5f, -164.8f,  598.8f),        // Station 5: Catwalk descending
+      new Waypoint( 384.5f, -197.0f,  425.5f),        // Station 6: Catwalk curve 1
+      new Waypoint( 448.8f, -223.0f,  251.5f),        // Station 7: Catwalk curve 2
+      new Waypoint( 509.8f, -216.0f,   52.0f),        // Station 8: Catwalk curve 3
+      new Waypoint( 540.5f, -178.8f, -196.0f),        // Station 9: Upper ramp 1
+      new Waypoint( 542.0f, -147.5f, -377.3f),        // Station 10: Upper ramp 2
+      new Waypoint( 523.3f, -119.0f, -557.0f),        // Station 11: Mid ramp
+      new Waypoint( 469.8f,  -90.0f, -763.8f, false, true), // Station 12: Green Line Banner (Lap Finish!)
+      new Waypoint( 408.0f,  -72.3f, -923.5f),        // Station 13: Ramp lower mid
+      new Waypoint( 331.0f,  -49.0f, -1048.8f),       // Station 14: Ramp lower
+      new Waypoint( 273.0f,  -53.5f, -1130.5f),       // Station 15: Ramp foot
+      new Waypoint( 244.0f,  -55.0f, -1170.0f)        // Station 16: Exit bottom into Cut 150
     }
   };
 
@@ -411,12 +414,15 @@ public class LohanRaceManager {
       r.boostTimer = 0;
       r.slowTimer = 0;
       r.isJumping = false;
+      r.jumpQueued = false;
       r.jumpProgress = 0;
       r.lastHurdleIndex = -1;
       r.currentAnimIndex = -1;
       r.jumpArcHeight = 22.0f;
       r.jumpSpeed = 0.075f;
     }
+    lastAlertHurdleIndex = -1;
+    alertSoundPlayed = false;
 
     // Save Dart position, hide Dart, attach camera to Dart and lock Dart to player racer
     if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
@@ -457,6 +463,19 @@ public class LohanRaceManager {
     currentCut = retail.cut;
     LOGGER.info("LohanRaceManager: Loaded submap cut %d during race.", currentCut);
 
+    if (currentCut == 150) {
+      // Fix foreground bridge cutout occluding racers in Cut 150.
+      // Background NPC depth ranges (screenZ 50-67) overlap with racer depth ranges (screenZ 57-75),
+      // making a single cutout Z that satisfies both constraints mathematically impossible.
+      // Solution: hide all background NPCs during Cut 150 (same as Cut 151), then push both
+      // cutouts to background depth (4095) so racers on the bridge never clip through planks.
+      //
+      // FG 2 (Env 8): Left bridge ramp foot cutout - background depth
+      retail.setEnvironmentOverlayDepthModeAndZ(2, 2, 4095);
+      // FG 3 (Env 9): Main bridge arch cutout - background depth (racers always in front)
+      retail.setEnvironmentOverlayDepthModeAndZ(2, 3, 4095);
+    }
+
     assignRacerSobjs(smap);
     pauseNonRacerSobjs(smap);
 
@@ -467,6 +486,7 @@ public class LohanRaceManager {
       r.lastHurdleIndex = -1;
       r.currentAnimIndex = -1;
       r.isJumping = false;
+      r.jumpQueued = false;
       r.jumpProgress = 0;
       r.jumpArcHeight = 22.0f;
       r.jumpSpeed = 0.075f;
@@ -474,6 +494,7 @@ public class LohanRaceManager {
       updateRacerPose(r, laneWaypoints, true);
     }
     alertSoundPlayed = false;
+    lastAlertHurdleIndex = -1;
 
     syncRacersToSobjs(smap);
     focusCamera(smap, playerRacer.pos);
@@ -512,22 +533,34 @@ public class LohanRaceManager {
 
   private static void pauseNonRacerSobjs(final SMap smap) {
     if (smap.sobjs_800c6880 == null) return;
-    // Hide only the default roaming creature on track in Cut 151
-    if (currentCut == 151) {
-      if (smap.sobjs_800c6880.length > 7 && smap.sobjs_800c6880[7] != null) {
-        smap.sobjs_800c6880[7].pause();
-        smap.sobjs_800c6880[7].innerStruct_00.hidden_128 = true;
+    for (int idx = 0; idx < smap.sobjs_800c6880.length; idx++) {
+      if (idx == PLAYER_SOBJ || idx == NPC1_SOBJ || idx == NPC2_SOBJ || idx == 0) {
+        continue;
+      }
+      // In Cut 151: hide the two non-racer track creatures (sobj 7, 11+)
+      // In Cut 150: hide ALL remaining sobjs — the bridge cutout depth space overlaps with both
+      //   racers and any background NPC, so no NPC can be safely visible during Cut 150 racing.
+      //   Dart (0) and the 3 racers (8/9/10) are already excluded by the continue above.
+      final boolean hideCut151Extra = (idx == 7 || idx >= 11);
+      final boolean hideCut150Npc   = (currentCut == 150);
+      if (hideCut151Extra || hideCut150Npc) {
+        if (smap.sobjs_800c6880[idx] != null) {
+          smap.sobjs_800c6880[idx].pause();
+          final SubmapObject210 sobj = smap.sobjs_800c6880[idx].innerStruct_00;
+          sobj.hidden_128 = true;
+          sobj.disableAnimation_12a = true;
+          sobj.collisionSizeHorizontal_1a0 = 0;
+          sobj.collisionSizeVertical_1a4 = 0;
+          sobj.model_00.coord2_14.coord.transfer.set(0.0f, 5000.0f, 0.0f);
+        }
       }
     }
   }
 
+
+
   private static void resumeAllSobjs(final SMap smap) {
-    if (smap.sobjs_800c6880 == null) return;
-    // Restore default roaming creature in Cut 151
-    if (smap.sobjs_800c6880.length > 7 && smap.sobjs_800c6880[7] != null) {
-      smap.sobjs_800c6880[7].resume();
-      smap.sobjs_800c6880[7].innerStruct_00.hidden_128 = false;
-    }
+    // Intentionally empty: on race finish, mapTransition(151, 0) reloads the cut freshly.
   }
 
   private static void suppressInteractInput(final SMap smap) {
@@ -559,6 +592,23 @@ public class LohanRaceManager {
   public static void onRender() {
     if (!isRaceActive()) {
       return;
+    }
+
+    if (currentCut == 150 && currentEngineState_8004dd04 instanceof final SMap smap && smap.submap instanceof final RetailSubmap retail) {
+      retail.setEnvironmentOverlayDepthModeAndZ(2, 2, 4095);
+      retail.setEnvironmentOverlayDepthModeAndZ(2, 3, 4095);
+      // Enforce per-frame: NPC scripts can resume themselves after cut-load, re-showing characters.
+      // Dart (0) and the 3 racers are the only sobjs that should be visible in Cut 150.
+      if (smap.sobjs_800c6880 != null) {
+        for (int idx = 0; idx < smap.sobjs_800c6880.length; idx++) {
+          if (idx == 0 || idx == PLAYER_SOBJ || idx == NPC1_SOBJ || idx == NPC2_SOBJ) continue;
+          if (smap.sobjs_800c6880[idx] != null) {
+            final SubmapObject210 s = smap.sobjs_800c6880[idx].innerStruct_00;
+            s.hidden_128 = true;
+            s.model_00.coord2_14.coord.transfer.set(0.0f, 5000.0f, 0.0f);
+          }
+        }
+      }
     }
 
     try {
@@ -656,49 +706,76 @@ public class LohanRaceManager {
       // Hurdle detection based on actual 3D Euclidean distance in world units
       final int upcomingHurdle = findUpcomingHurdle(r, waypoints);
       if (r.isPlayer && upcomingHurdle != -1) {
+        if (upcomingHurdle != lastAlertHurdleIndex) {
+          lastAlertHurdleIndex = upcomingHurdle;
+          alertSoundPlayed = false;
+        }
+
         final Waypoint hw = waypoints[upcomingHurdle];
         final float dist3d = r.pos.distance(hw.x, hw.y, hw.z);
         final float progressDist = (float) upcomingHurdle - r.pathProgress;
 
         // In approach zone when approaching obstacle and within 95 world units
-        final boolean inApproachZone = progressDist > -0.15f && dist3d < 95.0f && r.lastHurdleIndex != upcomingHurdle;
+        final boolean inApproachZone = progressDist > -0.05f && dist3d < 95.0f && r.lastHurdleIndex != upcomingHurdle;
 
         // Show/hide the ! alert indicator
-        setAlertIndicator(smap, PLAYER_SOBJ, inApproachZone);
+        setAlertIndicator(smap, PLAYER_SOBJ, inApproachZone && !r.jumpQueued && !r.isJumping);
 
         // Play the standard LoD prompt "boing" when ! first appears
-        if (inApproachZone && !alertSoundPlayed) {
+        if (inApproachZone && !alertSoundPlayed && !r.jumpQueued && !r.isJumping) {
           playMenuSound(4); // Standard LoD interaction prompt sound
           alertSoundPlayed = true;
-        } else if (!inApproachZone && progressDist > 0.5f) {
-          // Reset for the next hurdle
-          alertSoundPlayed = false;
         }
 
-        // Player jump attempt: anytime the alert is active (or right up to takeoff), pressing interact registers a successful jump!
-        if (actionJustPressed && !r.isJumping && r.lastHurdleIndex != upcomingHurdle &&
-            (inApproachZone || (progressDist > -0.25f && dist3d < 100.0f))) {
-          r.lastHurdleIndex = upcomingHurdle;
-          executeJump(r, upcomingHurdle, true);
+        // Player jump attempt: anytime alert is active (or right up to takeoff), pressing interact registers a successful jump!
+        if (actionJustPressed && r.lastHurdleIndex != upcomingHurdle && !r.isJumping && !r.jumpQueued &&
+            (inApproachZone || (progressDist > -0.15f && dist3d < 100.0f))) {
+          r.jumpQueued = true;
+          r.jumpSucceeded = true;
+          r.boostTimer = 45;
+          r.slowTimer = 0;
+          playMenuSound(2); // Standard LoD confirm/accept sound
+          jumpFeedbackText = "PERFECT JUMP!";
+          feedbackTicks = 40;
+          setAlertIndicator(smap, PLAYER_SOBJ, false);
+
+          if (r.pathProgress >= upcomingHurdle) {
+            launchJump(r, upcomingHurdle, true);
+          }
         }
-      } else if (!r.isPlayer && upcomingHurdle != -1 && !r.isJumping) {
+      } else if (!r.isPlayer && upcomingHurdle != -1 && !r.isJumping && !r.jumpQueued && r.lastHurdleIndex != upcomingHurdle) {
         // NPC hurdle jumping logic
         final Waypoint hw = waypoints[upcomingHurdle];
         final float dist3d = r.pos.distance(hw.x, hw.y, hw.z);
         final float progressDist = (float) upcomingHurdle - r.pathProgress;
-        if (progressDist > -0.10f && dist3d < 50.0f && r.lastHurdleIndex != upcomingHurdle) {
-          r.lastHurdleIndex = upcomingHurdle;
+        if (progressDist > -0.05f && dist3d < 55.0f) {
           final boolean success = Math.random() < (r.id == 0 ? 0.82 : 0.76);
-          executeJump(r, upcomingHurdle, success);
+          if (success) {
+            r.jumpQueued = true;
+            r.jumpSucceeded = true;
+            r.boostTimer = 45;
+            r.slowTimer = 0;
+            if (r.pathProgress >= upcomingHurdle) {
+              launchJump(r, upcomingHurdle, true);
+            }
+          } else {
+            r.lastHurdleIndex = upcomingHurdle;
+            handleMissedHurdle(r, upcomingHurdle);
+          }
         }
       }
 
-      // Missed hurdle timeout (stumble) - only triggers if racer completely passed the obstacle without jumping
-      if (upcomingHurdle != -1 && !r.isJumping && r.lastHurdleIndex != upcomingHurdle) {
+      // Launch queued jump when racer reaches takeoff point
+      if (r.jumpQueued && upcomingHurdle != -1 && r.pathProgress >= upcomingHurdle) {
+        launchJump(r, upcomingHurdle, r.jumpSucceeded);
+      }
+
+      // Missed hurdle timeout (stumble) - only triggers if racer passed takeoff without jumping
+      if (upcomingHurdle != -1 && !r.isJumping && !r.jumpQueued && r.lastHurdleIndex != upcomingHurdle) {
         final float progressDist = (float) upcomingHurdle - r.pathProgress;
-        if (progressDist < -0.15f) {
+        if (progressDist < -0.10f) {
           r.lastHurdleIndex = upcomingHurdle;
-          executeJump(r, upcomingHurdle, false); // Miss penalty
+          handleMissedHurdle(r, upcomingHurdle);
         }
       }
 
@@ -753,38 +830,56 @@ public class LohanRaceManager {
     }
   }
 
-  private static void executeJump(final Racer r, final int hurdleIndex, final boolean goodTiming) {
+  private static float getHurdleArcHeight(final int cut, final int hurdleIndex) {
+    if (cut == 150) {
+      return 70.0f; // Water jump
+    } else if (cut == 149) {
+      return 55.0f; // Cut 149: doorway gap jump (index 2) and ramp barrier jump (index 6)
+    } else {
+      return 65.0f; // Cut 151 log hurdles
+    }
+  }
+
+  private static void launchJump(final Racer r, final int hurdleIndex, final boolean goodTiming) {
     r.isJumping = true;
-    r.jumpStartProgress = r.pathProgress;
-    r.jumpEndProgress = hurdleIndex + 1.0f;
+    r.jumpQueued = false;
+    r.lastHurdleIndex = hurdleIndex;
+    r.jumpStartProgress = (float) hurdleIndex;
+    r.jumpEndProgress = (float) (hurdleIndex + 1);
     r.jumpProgress = 0.0f;
     r.jumpSucceeded = goodTiming;
-
-    // Water jump in Cut 150 or doorway gap in Cut 149 require a higher, grander arc
-    final boolean isBigGap = (currentCut == 150) || (currentCut == 149 && hurdleIndex <= 4);
-    r.jumpArcHeight = isBigGap ? (goodTiming ? 55.0f : 20.0f) : (goodTiming ? 28.0f : 12.0f);
+    r.jumpArcHeight = getHurdleArcHeight(currentCut, hurdleIndex);
 
     if (goodTiming) {
-      r.boostTimer = 45; // Speed boost
+      r.boostTimer = 45;
       r.slowTimer = 0;
-      if (r.isPlayer) {
-        playMenuSound(2); // Standard LoD confirm/accept sound
-        jumpFeedbackText = "PERFECT JUMP!";
-        feedbackTicks = 40;
-        alertSoundPlayed = false; // Reset for next hurdle
-        if (currentEngineState_8004dd04 instanceof final SMap smap) {
-          setAlertIndicator(smap, PLAYER_SOBJ, false);
-        }
-      }
+    }
+  }
+
+  private static void handleMissedHurdle(final Racer r, final int hurdleIndex) {
+    r.jumpQueued = false;
+    r.jumpSucceeded = false;
+    r.slowTimer = 50; // Speed penalty / stumble
+    r.boostTimer = 0;
+
+    final boolean isGap = (currentCut == 150) || (currentCut == 149 && hurdleIndex <= 3);
+    if (isGap) {
+      // Must hop across the gap with a low stumble arc so racer never walks on air
+      r.isJumping = true;
+      r.jumpStartProgress = (float) hurdleIndex;
+      r.jumpEndProgress = (float) (hurdleIndex + 1);
+      r.jumpProgress = 0.0f;
+      r.jumpArcHeight = 30.0f;
     } else {
-      r.slowTimer = 50; // Speed penalty / stumble
-      r.boostTimer = 0;
-      if (r.isPlayer) {
-        jumpFeedbackText = "MISSED!";
-        feedbackTicks = 40;
-        if (currentEngineState_8004dd04 instanceof final SMap smap) {
-          setAlertIndicator(smap, PLAYER_SOBJ, false);
-        }
+      // Log obstacle / ramp barrier: hits barrier and stumbles forward
+      r.isJumping = false;
+    }
+
+    if (r.isPlayer) {
+      jumpFeedbackText = "MISSED!";
+      feedbackTicks = 40;
+      if (currentEngineState_8004dd04 instanceof final SMap smap) {
+        setAlertIndicator(smap, PLAYER_SOBJ, false);
       }
     }
   }
@@ -859,7 +954,18 @@ public class LohanRaceManager {
         dartSobj.collisionReach_1b4 = 0;
         dartSobj.collidedWithSobjIndex_19c = -1;
         dartSobj.collidedWithSobjIndex_1a8 = -1;
-        dartSobj.model_00.coord2_14.coord.transfer.set(0.0f, 5000.0f, 0.0f);
+        dartSobj.model_00.coord2_14.coord.transfer.set(playerRacer.pos);
+      }
+    }
+
+    // Keep extra track creatures hidden and out of bounds during Cut 151
+    if (currentCut == 151 && smap.sobjs_800c6880 != null) {
+      for (int idx : new int[]{7, 11}) {
+        if (idx < smap.sobjs_800c6880.length && smap.sobjs_800c6880[idx] != null) {
+          final SubmapObject210 s = smap.sobjs_800c6880[idx].innerStruct_00;
+          s.hidden_128 = true;
+          s.model_00.coord2_14.coord.transfer.set(0.0f, 5000.0f, 0.0f);
+        }
       }
     }
 
@@ -958,29 +1064,14 @@ public class LohanRaceManager {
       }
     }
 
-    if (currentCut == 151) {
-      // Already in Cut 151! Restore Dart directly in front of the booth and fade in
-      restoreDart(smap);
-      startFadeEffect(2, 15);
-    } else {
-      // Defer Dart restoration to onSubmapLoad when Cut 151 finishes loading
-      pendingDartRestore = true;
-      smap.mapTransition(151, 0);
-    }
+    // Always do a clean map transition back to Cut 151 scene 0.
+    // This freshly reloads all retail scripts, models, and roaming creatures.
+    pendingDartRestore = true;
+    smap.mapTransition(151, 0);
   }
 
   private static void restoreDart(final SMap smap) {
     LOGGER.info("LohanRaceManager: Restoring Dart in front of vendor booth.");
-    // Despawn racer models completely: pause, hide, and park out of bounds
-    for (int idx : new int[]{NPC1_SOBJ, PLAYER_SOBJ, NPC2_SOBJ}) {
-      if (smap.sobjs_800c6880 != null && idx < smap.sobjs_800c6880.length && smap.sobjs_800c6880[idx] != null) {
-        final ScriptState<SubmapObject210> rState = smap.sobjs_800c6880[idx];
-        rState.pause();
-        final SubmapObject210 rSobj = rState.innerStruct_00;
-        rSobj.hidden_128 = true;
-        rSobj.model_00.coord2_14.coord.transfer.set(0.0f, 5000.0f, 0.0f);
-      }
-    }
 
     if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
       final ScriptState<SubmapObject210> dartState = smap.sobjs_800c6880[0];
@@ -994,9 +1085,6 @@ public class LohanRaceManager {
       if (dartState.ticker_04 != null) {
         dartState.ticker_04.accept(dartState, dart);
       }
-
-      // Resume all background and creature sobjs (default models load back in)
-      resumeAllSobjs(smap);
 
       // Direct camera to Dart without re-hiding Dart
       try {
