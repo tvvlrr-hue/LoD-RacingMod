@@ -300,80 +300,77 @@ public class LohanRaceManager {
 
   // Scene 4: Cut 151 (Full Track for subsequent laps) - Starts on catwalk in plain view approaching Hurdle 1.
   // Hurdle 1 at index 1 (Red dot 1 before log 1).
-  // Hurdle 2 at index 4 (Red dot 2 before log 2).
+  // Hurdle 2 at index 3 (Red dot 2 before log 2).
   // Curves smoothly along circular catwalk, enters ramp, crosses Green Line banner (Finish Line) to count lap, and exits into Cut 150.
   private static final Waypoint[][] CUT_151_FULL_LANES = new Waypoint[][]{
     // Lane 0 (NPC 1 - Inner Lane)
     new Waypoint[]{
-      new Waypoint(-204.0f,   16.0f, 1161.0f),        // Catwalk approach Hurdle 1
-      new Waypoint(-172.0f,   15.0f, 1220.0f, true),  // Red dot 1 (Log 1 takeoff)
-      new Waypoint( -56.0f,   -7.0f,  998.0f),        // Log 1 landing
-      new Waypoint( -10.0f,  -23.0f,  999.0f),        // Catwalk run between logs
-      new Waypoint(  43.0f,  -36.0f, 1066.0f, true),  // Red dot 2 (Log 2 takeoff)
-      new Waypoint( 101.0f,  -62.0f,  908.0f),        // Log 2 landing
-      new Waypoint( 110.0f,  -68.0f,  855.0f),        // Catwalk descending 1
-      new Waypoint( 185.0f, -115.0f,  735.0f),        // Catwalk descending 2
-      new Waypoint( 210.0f, -155.0f,  580.0f),        // Catwalk curve 1
-      new Waypoint( 270.0f, -178.0f,  390.0f),        // Catwalk curve 2
-      new Waypoint( 360.0f, -206.0f,  235.0f),        // Catwalk curve 3
-      new Waypoint( 405.0f, -214.0f,  215.0f),        // Catwalk curve 4
-      new Waypoint( 445.0f, -210.0f,   60.0f),        // Catwalk curve 5
-      new Waypoint( 450.0f, -168.0f, -185.0f),        // Catwalk into upper ramp
-      new Waypoint( 420.0f, -127.0f, -385.0f),        // Ramp upper
-      new Waypoint( 400.0f, -101.0f, -525.0f),        // Ramp mid
-      new Waypoint( 355.0f,  -80.0f, -715.0f, false, true), // Green Line Banner (Lap Count!)
-      new Waypoint( 300.0f,  -61.0f, -855.0f),        // Ramp past banner
-      new Waypoint( 235.0f,  -36.0f, -970.0f),        // Ramp lower
-      new Waypoint( 200.0f,  -41.0f, -1070.0f),       // Ramp foot
-      new Waypoint( 200.0f,  -46.0f, -1120.0f)        // Exit bottom into Cut 150
+      new Waypoint(-261.0f,   22.0f, 1142.0f),        // Station 0: Catwalk approach
+      new Waypoint(-215.0f,   16.5f, 1165.0f, true),  // Station 1: Red dot 1 (Log 1 takeoff)
+      new Waypoint( -31.0f,  -17.0f, 1048.0f),        // Station 2: Log 1 landing
+      new Waypoint(  -2.0f,  -27.0f, 1027.0f, true),  // Station 3: Red dot 2 (Log 2 takeoff)
+      new Waypoint( 111.0f,  -66.0f,  935.0f),        // Station 4: Log 2 landing
+      new Waypoint( 142.0f,  -75.0f,  906.0f),        // Station 5: Catwalk descending 1
+      new Waypoint( 174.0f, -115.0f,  736.0f),        // Station 6: Catwalk descending 2
+      new Waypoint( 210.0f, -155.0f,  580.0f),        // Station 7: Catwalk curve 1
+      new Waypoint( 270.0f, -178.0f,  390.0f),        // Station 8: Catwalk curve 2
+      new Waypoint( 360.0f, -206.0f,  235.0f),        // Station 9: Catwalk curve 3
+      new Waypoint( 405.0f, -214.0f,  215.0f),        // Station 10: Catwalk curve 4
+      new Waypoint( 445.0f, -210.0f,   60.0f),        // Station 11: Catwalk curve 5
+      new Waypoint( 450.0f, -168.0f, -185.0f),        // Station 12: Catwalk into upper ramp
+      new Waypoint( 420.0f, -127.0f, -385.0f),        // Station 13: Ramp upper
+      new Waypoint( 400.0f, -101.0f, -525.0f),        // Station 14: Ramp mid
+      new Waypoint( 355.0f,  -80.0f, -715.0f, false, true), // Station 15: Green Line Banner (Lap Finish!)
+      new Waypoint( 300.0f,  -61.0f, -855.0f),        // Station 16: Ramp past banner
+      new Waypoint( 235.0f,  -36.0f, -970.0f),        // Station 17: Ramp lower
+      new Waypoint( 200.0f,  -41.0f, -1070.0f),       // Station 18: Ramp foot
+      new Waypoint( 200.0f,  -46.0f, -1120.0f)        // Station 19: Exit bottom into Cut 150
     },
     // Lane 1 (Player - Center Lane)
     new Waypoint[]{
-      new Waypoint(-204.0f,   16.0f, 1179.0f),        // Catwalk approach Hurdle 1
-      new Waypoint(-172.0f,   15.0f, 1238.0f, true),  // Red dot 1 (Log 1 takeoff)
-      new Waypoint( -56.0f,   -7.0f, 1016.0f),        // Log 1 landing
-      new Waypoint( -10.0f,  -23.0f, 1017.0f),        // Catwalk run between logs
-      new Waypoint(  43.0f,  -36.0f, 1084.0f, true),  // Red dot 2 (Log 2 takeoff)
-      new Waypoint( 101.0f,  -62.0f,  926.0f),        // Log 2 landing
-      new Waypoint( 110.0f,  -68.0f,  873.0f),        // Catwalk descending 1
-      new Waypoint( 185.0f, -115.0f,  750.0f),        // Catwalk descending 2
-      new Waypoint( 218.0f, -155.0f,  589.0f),        // Catwalk curve 1
-      new Waypoint( 281.0f, -178.0f,  393.0f),        // Catwalk curve 2
-      new Waypoint( 375.0f, -206.0f,  238.0f),        // Catwalk curve 3
-      new Waypoint( 418.0f, -214.0f,  217.0f),        // Catwalk curve 4
-      new Waypoint( 461.0f, -210.0f,   62.0f),        // Catwalk curve 5
-      new Waypoint( 468.0f, -168.0f, -185.0f),        // Catwalk into upper ramp
-      new Waypoint( 437.0f, -127.0f, -386.0f),        // Ramp upper
-      new Waypoint( 417.0f, -101.0f, -526.0f),        // Ramp mid
-      new Waypoint( 376.0f,  -80.0f, -721.0f, false, true), // Green Line Banner (Lap Count!)
-      new Waypoint( 322.0f,  -61.0f, -859.0f),        // Ramp past banner
-      new Waypoint( 251.0f,  -36.0f, -975.0f),        // Ramp lower
-      new Waypoint( 220.0f,  -41.0f, -1072.0f),       // Ramp foot
-      new Waypoint( 218.0f,  -46.0f, -1121.0f)        // Exit bottom into Cut 150
+      new Waypoint(-250.0f,   22.0f, 1156.0f),        // Station 0: Catwalk approach
+      new Waypoint(-204.0f,   16.5f, 1179.0f, true),  // Station 1: Red dot 1 (Log 1 takeoff)
+      new Waypoint( -20.0f,  -17.0f, 1062.0f),        // Station 2: Log 1 landing
+      new Waypoint(   9.0f,  -27.0f, 1041.0f, true),  // Station 3: Red dot 2 (Log 2 takeoff)
+      new Waypoint( 122.0f,  -66.0f,  949.0f),        // Station 4: Log 2 landing
+      new Waypoint( 153.0f,  -75.0f,  920.0f),        // Station 5: Catwalk descending 1
+      new Waypoint( 185.0f, -115.0f,  750.0f),        // Station 6: Catwalk descending 2
+      new Waypoint( 218.0f, -155.0f,  589.0f),        // Station 7: Catwalk curve 1
+      new Waypoint( 281.0f, -178.0f,  393.0f),        // Station 8: Catwalk curve 2
+      new Waypoint( 375.0f, -206.0f,  238.0f),        // Station 9: Catwalk curve 3
+      new Waypoint( 418.0f, -214.0f,  217.0f),        // Station 10: Catwalk curve 4
+      new Waypoint( 461.0f, -210.0f,   62.0f),        // Station 11: Catwalk curve 5
+      new Waypoint( 468.0f, -168.0f, -185.0f),        // Station 12: Catwalk into upper ramp
+      new Waypoint( 437.0f, -127.0f, -386.0f),        // Station 13: Ramp upper
+      new Waypoint( 417.0f, -101.0f, -526.0f),        // Station 14: Ramp mid
+      new Waypoint( 376.0f,  -80.0f, -721.0f, false, true), // Station 15: Green Line Banner (Lap Finish!)
+      new Waypoint( 322.0f,  -61.0f, -859.0f),        // Station 16: Ramp past banner
+      new Waypoint( 251.0f,  -36.0f, -975.0f),        // Station 17: Ramp lower
+      new Waypoint( 220.0f,  -41.0f, -1072.0f),       // Station 18: Ramp foot
+      new Waypoint( 218.0f,  -46.0f, -1121.0f)        // Station 19: Exit bottom into Cut 150
     },
     // Lane 2 (NPC 2 - Outer Lane)
     new Waypoint[]{
-      new Waypoint(-204.0f,   16.0f, 1197.0f),        // Catwalk approach Hurdle 1
-      new Waypoint(-172.0f,   15.0f, 1256.0f, true),  // Red dot 1 (Log 1 takeoff)
-      new Waypoint( -56.0f,   -7.0f, 1034.0f),        // Log 1 landing
-      new Waypoint( -10.0f,  -23.0f, 1035.0f),        // Catwalk run between logs
-      new Waypoint(  43.0f,  -36.0f, 1102.0f, true),  // Red dot 2 (Log 2 takeoff)
-      new Waypoint( 101.0f,  -62.0f,  944.0f),        // Log 2 landing
-      new Waypoint( 110.0f,  -68.0f,  891.0f),        // Catwalk descending 1
-      new Waypoint( 185.0f, -115.0f,  765.0f),        // Catwalk descending 2
-      new Waypoint( 226.0f, -155.0f,  598.0f),        // Catwalk curve 1
-      new Waypoint( 292.0f, -178.0f,  396.0f),        // Catwalk curve 2
-      new Waypoint( 390.0f, -206.0f,  241.0f),        // Catwalk curve 3
-      new Waypoint( 431.0f, -214.0f,  219.0f),        // Catwalk curve 4
-      new Waypoint( 477.0f, -210.0f,   64.0f),        // Catwalk curve 5
-      new Waypoint( 486.0f, -168.0f, -185.0f),        // Catwalk into upper ramp
-      new Waypoint( 454.0f, -127.0f, -387.0f),        // Ramp upper
-      new Waypoint( 434.0f, -101.0f, -527.0f),        // Ramp mid
-      new Waypoint( 395.0f,  -80.0f, -727.0f, false, true), // Green Line Banner (Lap Count!)
-      new Waypoint( 340.0f,  -61.0f, -865.0f),        // Ramp past banner
-      new Waypoint( 270.0f,  -36.0f, -980.0f),        // Ramp lower
-      new Waypoint( 240.0f,  -41.0f, -1074.0f),       // Ramp foot
-      new Waypoint( 236.0f,  -46.0f, -1122.0f)        // Exit bottom into Cut 150
+      new Waypoint(-239.0f,   22.0f, 1170.0f),        // Station 0: Catwalk approach
+      new Waypoint(-193.0f,   16.5f, 1193.0f, true),  // Station 1: Red dot 1 (Log 1 takeoff)
+      new Waypoint(  -9.0f,  -17.0f, 1076.0f),        // Station 2: Log 1 landing
+      new Waypoint(  20.0f,  -27.0f, 1055.0f, true),  // Station 3: Red dot 2 (Log 2 takeoff)
+      new Waypoint( 133.0f,  -66.0f,  963.0f),        // Station 4: Log 2 landing
+      new Waypoint( 164.0f,  -75.0f,  934.0f),        // Station 5: Catwalk descending 1
+      new Waypoint( 196.0f, -115.0f,  764.0f),        // Station 6: Catwalk descending 2
+      new Waypoint( 226.0f, -155.0f,  598.0f),        // Station 7: Catwalk curve 1
+      new Waypoint( 292.0f, -178.0f,  396.0f),        // Station 8: Catwalk curve 2
+      new Waypoint( 390.0f, -206.0f,  241.0f),        // Station 9: Catwalk curve 3
+      new Waypoint( 431.0f, -214.0f,  219.0f),        // Station 10: Catwalk curve 4
+      new Waypoint( 477.0f, -210.0f,   64.0f),        // Station 11: Catwalk curve 5
+      new Waypoint( 486.0f, -168.0f, -185.0f),        // Station 12: Catwalk into upper ramp
+      new Waypoint( 454.0f, -127.0f, -387.0f),        // Station 13: Ramp upper
+      new Waypoint( 434.0f, -101.0f, -527.0f),        // Station 14: Ramp mid
+      new Waypoint( 395.0f,  -80.0f, -727.0f, false, true), // Station 15: Green Line Banner (Lap Finish!)
+      new Waypoint( 340.0f,  -61.0f, -865.0f),        // Station 16: Ramp past banner
+      new Waypoint( 270.0f,  -36.0f, -980.0f),        // Station 17: Ramp lower
+      new Waypoint( 240.0f,  -41.0f, -1074.0f),       // Station 18: Ramp foot
+      new Waypoint( 236.0f,  -46.0f, -1122.0f)        // Station 19: Exit bottom into Cut 150
     }
   };
 
@@ -531,11 +528,10 @@ public class LohanRaceManager {
   private static void resumeAllSobjs(final SMap smap) {
     if (smap.sobjs_800c6880 == null) return;
     for (int i = 1; i < smap.sobjs_800c6880.length; i++) {
-      if (smap.sobjs_800c6880[i] != null) {
+      // Do NOT resume the 3 racer sobjs (8, 9, 10); only restore ambient and retail models
+      if (i != NPC1_SOBJ && i != PLAYER_SOBJ && i != NPC2_SOBJ && smap.sobjs_800c6880[i] != null) {
         smap.sobjs_800c6880[i].resume();
-        if (i == 7 || i >= 11) {
-          smap.sobjs_800c6880[i].innerStruct_00.hidden_128 = false;
-        }
+        smap.sobjs_800c6880[i].innerStruct_00.hidden_128 = false;
       }
     }
   }
@@ -822,7 +818,7 @@ public class LohanRaceManager {
 
         sobj.model_00.coord2_14.coord.transfer.set(r.pos);
         sobj.model_00.coord2_14.transforms.rotate.set(r.rot);
-        sobj.model_00.coord2_14.transforms.scale.set(0.625f, 0.625f, 0.625f);
+        sobj.model_00.coord2_14.transforms.scale.set(0.35f, 0.35f, 0.35f);
 
         // Animation state machine:
         // 0 = Idle (countdown & finish idle)
@@ -833,9 +829,11 @@ public class LohanRaceManager {
                                 state == RaceState.FINISH_IDLE || state == RaceState.FINISH_FADING_OUT) ? 0 :
                                (r.isJumping ? 2 : (r.slowTimer > 0 ? 4 : 3));
 
-        if (r.currentAnimIndex != targetAnim || sobj.model_00.anim_08 == null) {
+        if (sobj.animIndex_132 != targetAnim || sobj.model_00.anim_08 == null || sobj.disableAnimation_12a) {
           r.currentAnimIndex = targetAnim;
           sobj.animIndex_132 = targetAnim;
+          sobj.disableAnimation_12a = false;
+          sobj.flags_190 &= ~0x6000_0000;
           sobj.animationFinishedFrames_12c = 0;
           if (smap.submap != null) {
             List<legend.game.types.TmdAnimationFile> anims = null;
@@ -855,19 +853,23 @@ public class LohanRaceManager {
   }
 
   private static void focusCamera(final SMap smap, final Vector3f targetPos) {
-    // 1. Keep Dart hidden and parked out of bounds so Dart never collides with NPCs or triggers dialogues
-    if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
-      final ScriptState<SubmapObject210> dartState = smap.sobjs_800c6880[0];
-      final SubmapObject210 dartSobj = dartState.innerStruct_00;
-      if (isRaceActive()) {
-        dartSobj.hidden_128 = true;
-        dartSobj.cameraAttached_178 = false;
-        dartSobj.collisionSizeHorizontal_1a0 = 0;
-        dartSobj.collisionSizeVertical_1a4 = 0;
-        dartSobj.collisionReach_1b4 = 0;
-        dartSobj.collidedWithSobjIndex_19c = -1;
-        dartSobj.collidedWithSobjIndex_1a8 = -1;
-        dartSobj.model_00.coord2_14.coord.transfer.set(0.0f, 5000.0f, 0.0f);
+    // 1. Keep Dart and all non-racer sobjs hidden and parked out of bounds during the race
+    // Ensures default roaming creatures and NPCs never appear on track or trigger dialogues
+    if (smap.sobjs_800c6880 != null) {
+      for (int i = 0; i < smap.sobjs_800c6880.length; i++) {
+        if (i != NPC1_SOBJ && i != PLAYER_SOBJ && i != NPC2_SOBJ && smap.sobjs_800c6880[i] != null) {
+          final ScriptState<SubmapObject210> sstate = smap.sobjs_800c6880[i];
+          sstate.pause();
+          final SubmapObject210 sobj = sstate.innerStruct_00;
+          sobj.hidden_128 = true;
+          sobj.cameraAttached_178 = false;
+          sobj.collisionSizeHorizontal_1a0 = 0;
+          sobj.collisionSizeVertical_1a4 = 0;
+          sobj.collisionReach_1b4 = 0;
+          sobj.collidedWithSobjIndex_19c = -1;
+          sobj.collidedWithSobjIndex_1a8 = -1;
+          sobj.model_00.coord2_14.coord.transfer.set(0.0f, 5000.0f, 0.0f);
+        }
       }
     }
 
@@ -979,10 +981,14 @@ public class LohanRaceManager {
 
   private static void restoreDart(final SMap smap) {
     LOGGER.info("LohanRaceManager: Restoring Dart in front of vendor booth.");
-    // Despawn racer models
+    // Despawn racer models completely: pause, hide, and park out of bounds
     for (int idx : new int[]{NPC1_SOBJ, PLAYER_SOBJ, NPC2_SOBJ}) {
       if (smap.sobjs_800c6880 != null && idx < smap.sobjs_800c6880.length && smap.sobjs_800c6880[idx] != null) {
-        smap.sobjs_800c6880[idx].innerStruct_00.hidden_128 = true;
+        final ScriptState<SubmapObject210> rState = smap.sobjs_800c6880[idx];
+        rState.pause();
+        final SubmapObject210 rSobj = rState.innerStruct_00;
+        rSobj.hidden_128 = true;
+        rSobj.model_00.coord2_14.coord.transfer.set(0.0f, 5000.0f, 0.0f);
       }
     }
 
