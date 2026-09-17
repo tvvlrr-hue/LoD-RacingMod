@@ -324,6 +324,19 @@ public class LohanRaceNpc {
       LOGGER.info("LohanRaceNpc: Player chose 'No, thank you.'.");
       closeDialogue();
     } else {
+      final int tickets = getHeroTickets();
+      if (tickets <= 0) {
+        LOGGER.info("LohanRaceNpc: Player has no tickets remaining!");
+        closeDialogue();
+        return;
+      }
+
+      // Deduct 1 ticket to enter the race
+      if (gameState_800babc8 != null && gameState_800babc8.scriptData_08 != null) {
+        gameState_800babc8.scriptData_08[27] = Math.max(0, gameState_800babc8.scriptData_08[27] - 1);
+        LOGGER.info("LohanRaceNpc: Deducted 1 ticket to play. Remaining tickets: %d", gameState_800babc8.scriptData_08[27]);
+      }
+
       LOGGER.info("LohanRaceNpc: Player chose 'Let's try.'. Starting minigame!");
       closeDialogue();
       if (currentEngineState_8004dd04 instanceof final SMap smap) {
