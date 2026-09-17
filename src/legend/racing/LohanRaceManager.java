@@ -512,27 +512,21 @@ public class LohanRaceManager {
 
   private static void pauseNonRacerSobjs(final SMap smap) {
     if (smap.sobjs_800c6880 == null) return;
-    for (int i = 1; i < smap.sobjs_800c6880.length; i++) {
-      if (i != NPC1_SOBJ && i != PLAYER_SOBJ && i != NPC2_SOBJ) {
-        if (smap.sobjs_800c6880[i] != null) {
-          smap.sobjs_800c6880[i].pause();
-          // Hide ambient creatures on track (sobj 7 and sobjs 11+) so only 3 racers are visible
-          if (i == 7 || i >= 11) {
-            smap.sobjs_800c6880[i].innerStruct_00.hidden_128 = true;
-          }
-        }
+    // Hide only the default roaming creature on track in Cut 151
+    if (currentCut == 151) {
+      if (smap.sobjs_800c6880.length > 7 && smap.sobjs_800c6880[7] != null) {
+        smap.sobjs_800c6880[7].pause();
+        smap.sobjs_800c6880[7].innerStruct_00.hidden_128 = true;
       }
     }
   }
 
   private static void resumeAllSobjs(final SMap smap) {
     if (smap.sobjs_800c6880 == null) return;
-    for (int i = 1; i < smap.sobjs_800c6880.length; i++) {
-      // Do NOT resume the 3 racer sobjs (8, 9, 10); only restore ambient and retail models
-      if (i != NPC1_SOBJ && i != PLAYER_SOBJ && i != NPC2_SOBJ && smap.sobjs_800c6880[i] != null) {
-        smap.sobjs_800c6880[i].resume();
-        smap.sobjs_800c6880[i].innerStruct_00.hidden_128 = false;
-      }
+    // Restore default roaming creature in Cut 151
+    if (smap.sobjs_800c6880.length > 7 && smap.sobjs_800c6880[7] != null) {
+      smap.sobjs_800c6880[7].resume();
+      smap.sobjs_800c6880[7].innerStruct_00.hidden_128 = false;
     }
   }
 
@@ -818,7 +812,7 @@ public class LohanRaceManager {
 
         sobj.model_00.coord2_14.coord.transfer.set(r.pos);
         sobj.model_00.coord2_14.transforms.rotate.set(r.rot);
-        sobj.model_00.coord2_14.transforms.scale.set(0.35f, 0.35f, 0.35f);
+        sobj.model_00.coord2_14.transforms.scale.set(0.625f, 0.625f, 0.625f);
 
         // Animation state machine:
         // 0 = Idle (countdown & finish idle)
@@ -853,23 +847,19 @@ public class LohanRaceManager {
   }
 
   private static void focusCamera(final SMap smap, final Vector3f targetPos) {
-    // 1. Keep Dart and all non-racer sobjs hidden and parked out of bounds during the race
-    // Ensures default roaming creatures and NPCs never appear on track or trigger dialogues
-    if (smap.sobjs_800c6880 != null) {
-      for (int i = 0; i < smap.sobjs_800c6880.length; i++) {
-        if (i != NPC1_SOBJ && i != PLAYER_SOBJ && i != NPC2_SOBJ && smap.sobjs_800c6880[i] != null) {
-          final ScriptState<SubmapObject210> sstate = smap.sobjs_800c6880[i];
-          sstate.pause();
-          final SubmapObject210 sobj = sstate.innerStruct_00;
-          sobj.hidden_128 = true;
-          sobj.cameraAttached_178 = false;
-          sobj.collisionSizeHorizontal_1a0 = 0;
-          sobj.collisionSizeVertical_1a4 = 0;
-          sobj.collisionReach_1b4 = 0;
-          sobj.collidedWithSobjIndex_19c = -1;
-          sobj.collidedWithSobjIndex_1a8 = -1;
-          sobj.model_00.coord2_14.coord.transfer.set(0.0f, 5000.0f, 0.0f);
-        }
+    // 1. Keep Dart hidden and parked out of bounds so Dart never collides with NPCs or triggers dialogues
+    if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
+      final ScriptState<SubmapObject210> dartState = smap.sobjs_800c6880[0];
+      final SubmapObject210 dartSobj = dartState.innerStruct_00;
+      if (isRaceActive()) {
+        dartSobj.hidden_128 = true;
+        dartSobj.cameraAttached_178 = false;
+        dartSobj.collisionSizeHorizontal_1a0 = 0;
+        dartSobj.collisionSizeVertical_1a4 = 0;
+        dartSobj.collisionReach_1b4 = 0;
+        dartSobj.collidedWithSobjIndex_19c = -1;
+        dartSobj.collidedWithSobjIndex_1a8 = -1;
+        dartSobj.model_00.coord2_14.coord.transfer.set(0.0f, 5000.0f, 0.0f);
       }
     }
 
