@@ -505,17 +505,18 @@ public class LohanRaceManager {
   }
 
   public static void onSubmapLoad(final SMap smap, final RetailSubmap retail, final List<SubmapObject> objects) {
-    // Ensure racetrack exit ramp in Cut 151 has a door trigger back to Lohan town (Cut 150)
+    // Ensure racetrack exit ramp in Cut 151 has door triggers back to Lohan town (Cut 150)
     final CollisionGeometry col = getCollisionGeometry(smap);
     if (retail.cut == 151 && col != null) {
       try {
-        final int rampPrim = col.getClosestCollisionPrimitive(163.0f, -4.0f, -1120.0f);
-        if (rampPrim >= 0 && rampPrim < 64) {
-          col.addDoor(rampPrim, 150, 0);
-          LOGGER.info("LohanRaceManager: Added racetrack ramp exit door trigger to Cut 150 at primitive %d", rampPrim);
+        for (int p : new int[]{51, 52, 53, 54}) {
+          if (p >= 0 && p < 64) {
+            col.addDoor(p, 150, 0);
+          }
         }
+        LOGGER.info("LohanRaceManager: Added racetrack ramp exit door triggers (51-54) to Cut 150");
       } catch (Throwable t) {
-        LOGGER.warn("LohanRaceManager: Could not add ramp exit door", t);
+        LOGGER.warn("LohanRaceManager: Could not add ramp exit doors", t);
       }
     }
 
@@ -542,7 +543,6 @@ public class LohanRaceManager {
         LOGGER.warn("Could not set playerPositionRestoreMode via reflection", t);
       }
 
-      startFadeEffect(2, 15);
       return;
     }
 
@@ -717,12 +717,32 @@ public class LohanRaceManager {
     }
 
     if (!pendingDartRestore && !isRaceActive()) {
-      // Allow Dart to exit Cut 151 via racetrack ramp back to Lohan town (Cut 150)
+      // Allow Dart to exit Cut 151 via both the main town doorway and racetrack ramp back to Lohan town (Cut 150)
       if (currentEngineState_8004dd04 instanceof final SMap smap && smap.submap instanceof final RetailSubmap retail && retail.cut == 151) {
         if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
           final SubmapObject210 dart = smap.sobjs_800c6880[0].innerStruct_00;
           final Vector3f dartPos = dart.model_00.coord2_14.coord.transfer;
-          if (dartPos.z < -1050.0f && dartPos.x > 80.0f && dartPos.x < 280.0f) {
+
+          // Always ensure collidedPrimitiveIndex_80052c38 tracks Dart's active primitive
+          if (dart.collidedPrimitiveIndex_16c >= 0) {
+            Scus94491BpeSegment_8005.collidedPrimitiveIndex_80052c38 = dart.collidedPrimitiveIndex_16c;
+          }
+
+          boolean shouldTransitionToTown = false;
+
+          // 1. Main town doorway exit (Primitive 0 corridor: X < -15.0f and Z around -860)
+          if (dart.collidedPrimitiveIndex_16c == 0 ||
+              (dartPos.x < -15.0f && dartPos.z < -750.0f && dartPos.z > -980.0f)) {
+            shouldTransitionToTown = true;
+          }
+
+          // 2. Racetrack ramp exit (Primitives 51-54 heading south down to Cut 150)
+          if ((dart.collidedPrimitiveIndex_16c >= 51 && dart.collidedPrimitiveIndex_16c <= 54) ||
+              (dartPos.z < -1040.0f && dartPos.x > 120.0f)) {
+            shouldTransitionToTown = true;
+          }
+
+          if (shouldTransitionToTown) {
             try {
               if (transitioningField == null) {
                 transitioningField = SMap.class.getDeclaredField("transitioning_800f7e4c");
@@ -730,7 +750,8 @@ public class LohanRaceManager {
               }
               final boolean isTransitioning = transitioningField.getBoolean(smap);
               if (!isTransitioning) {
-                LOGGER.info("LohanRaceManager: Player walked down racetrack exit ramp, transitioning to Cut 150.");
+                LOGGER.info("LohanRaceManager: Player exiting Cut 151 to Lohan town (Cut 150) at pos=(%.1f, %.1f, %.1f), prim=%d",
+                    dartPos.x, dartPos.y, dartPos.z, dart.collidedPrimitiveIndex_16c);
                 smap.mapTransition(150, 0);
               }
             } catch (Throwable t) {
