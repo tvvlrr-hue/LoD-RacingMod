@@ -437,6 +437,21 @@ public class LohanRaceManager {
     assignRacerSobjs(smap);
     pauseNonRacerSobjs(smap);
 
+    // Populate animations for the 3 racer sobjs (8, 9, 10) so they always have the creature animation set.
+    if (smap.submap != null) {
+      final List<legend.game.types.TmdAnimationFile> creatureAnims = getCreatureAnimations(smap.submap.objects);
+      if (creatureAnims != null) {
+        for (int idx : new int[]{NPC1_SOBJ, PLAYER_SOBJ, NPC2_SOBJ}) {
+          if (idx < smap.submap.objects.size()) {
+            final SubmapObject obj = smap.submap.objects.get(idx);
+            if (obj.animations.isEmpty()) {
+              obj.animations.addAll(creatureAnims);
+            }
+          }
+        }
+      }
+    }
+
     // Position contestants at starting line and focus camera
     for (final Racer r : racers) {
       final Waypoint[] laneWaypoints = getLaneWaypoints(r.laneIndex);
@@ -444,6 +459,28 @@ public class LohanRaceManager {
     }
     syncRacersToSobjs(smap);
     focusCamera(smap, playerRacer.pos);
+  }
+
+  private static List<legend.game.types.TmdAnimationFile> getCreatureAnimations(final List<SubmapObject> objects) {
+    if (objects == null) return null;
+    final int preferredIndex = (currentCut == 151) ? 7 : 8;
+    if (preferredIndex < objects.size() && objects.get(preferredIndex) != null) {
+      final List<legend.game.types.TmdAnimationFile> list = objects.get(preferredIndex).animations;
+      if (list != null && list.size() > 3 && list.get(3) != null) {
+        return list;
+      }
+    }
+    for (final SubmapObject obj : objects) {
+      if (obj != null && obj.animations != null && obj.animations.size() > 3 && obj.animations.get(3) != null) {
+        return obj.animations;
+      }
+    }
+    return null;
+  }
+
+  private static List<legend.game.types.TmdAnimationFile> getCreatureAnimations(final SMap smap) {
+    if (smap == null || smap.submap == null) return null;
+    return getCreatureAnimations(smap.submap.objects);
   }
 
   public static void onSubmapLoad(final SMap smap, final RetailSubmap retail, final List<SubmapObject> objects) {
@@ -478,6 +515,20 @@ public class LohanRaceManager {
 
     assignRacerSobjs(smap);
     pauseNonRacerSobjs(smap);
+
+    // Populate animations for the 3 racer sobjs (8, 9, 10) so they always have the creature animation set.
+    // In retail Severed Chains, symlinked sobjs only share the model; their animations list is empty.
+    final List<legend.game.types.TmdAnimationFile> creatureAnims = getCreatureAnimations(objects);
+    if (creatureAnims != null) {
+      for (int idx : new int[]{NPC1_SOBJ, PLAYER_SOBJ, NPC2_SOBJ}) {
+        if (idx < objects.size()) {
+          final SubmapObject obj = objects.get(idx);
+          if (obj.animations.isEmpty()) {
+            obj.animations.addAll(creatureAnims);
+          }
+        }
+      }
+    }
 
     // Persist relative gap into this new cut
     lapCountedThisPass = false;
@@ -527,6 +578,14 @@ public class LohanRaceManager {
         sobj.rotationFrames_188 = 0;
         sobj.movementType_170 = 0;
         sobj.movementTicks_144 = 0;
+        // Disable collision so the engine's collision system doesn't snap the Y coordinate
+        // back to the ground surface during jumps (which causes a one-frame visual glitch).
+        sobj.collisionSizeHorizontal_1a0 = 0;
+        sobj.collisionSizeVertical_1a4 = 0;
+        sobj.collisionReach_1b4 = 0;
+        sobj.collidedWithSobjIndex_19c = -1;
+        sobj.collidedWithSobjIndex_1a8 = -1;
+        sobj.ignoreCollision_172 = 1; // Treat as ghost — no geometry collision
       }
     }
   }
@@ -765,20 +824,6 @@ public class LohanRaceManager {
         }
       }
 
-      // Launch queued jump when racer reaches takeoff point
-      if (r.jumpQueued && upcomingHurdle != -1 && r.pathProgress >= upcomingHurdle) {
-        launchJump(r, upcomingHurdle, r.jumpSucceeded);
-      }
-
-      // Missed hurdle timeout (stumble) - only triggers if racer passed takeoff without jumping
-      if (upcomingHurdle != -1 && !r.isJumping && !r.jumpQueued && r.lastHurdleIndex != upcomingHurdle) {
-        final float progressDist = (float) upcomingHurdle - r.pathProgress;
-        if (progressDist < -0.10f) {
-          r.lastHurdleIndex = upcomingHurdle;
-          handleMissedHurdle(r, upcomingHurdle);
-        }
-      }
-
       // Distance step along waypoints
       final int curWp = Math.max(0, Math.min(waypoints.length - 2, (int) Math.floor(Math.max(0.0f, r.pathProgress))));
       final Waypoint w0 = waypoints[curWp];
@@ -786,6 +831,20 @@ public class LohanRaceManager {
       final float segDist = Math.max(1.0f, (float) Math.hypot(w1.x - w0.x, w1.z - w0.z));
       final float step = r.currentSpeed / segDist;
       r.pathProgress += step;
+
+      // Launch queued jump immediately if racer reached or crossed takeoff point during this step
+      if (r.jumpQueued && upcomingHurdle != -1 && r.pathProgress >= upcomingHurdle && !r.isJumping) {
+        launchJump(r, upcomingHurdle, r.jumpSucceeded);
+      }
+
+      // Missed hurdle timeout (stumble) - triggers if racer stepped past takeoff without jumping
+      if (upcomingHurdle != -1 && !r.isJumping && !r.jumpQueued && r.lastHurdleIndex != upcomingHurdle) {
+        final float progressDist = (float) upcomingHurdle - r.pathProgress;
+        if (progressDist < -0.10f) {
+          r.lastHurdleIndex = upcomingHurdle;
+          handleMissedHurdle(r, upcomingHurdle);
+        }
+      }
 
       // Update 3D position and rotation (smoothly rotating around corners)
       updateRacerPose(r, waypoints, false);
@@ -899,11 +958,11 @@ public class LohanRaceManager {
         sobj.interpRotationTicksTotalY = 0;
         sobj.rotationFrames_188 = 0;
         sobj.hidden_128 = false;
-        sobj.disableAnimation_12a = false; // Always ensure animation is active
-        sobj.flags_190 &= ~0x6000_0000;
-        if (sobj.model_00.animationState_9c == 2) {
-          sobj.model_00.animationState_9c = 0;
-        }
+        // Keep collision disabled every frame — the engine can re-enable it via its internal tick
+        sobj.collisionSizeHorizontal_1a0 = 0;
+        sobj.collisionSizeVertical_1a4 = 0;
+        sobj.collisionReach_1b4 = 0;
+        sobj.ignoreCollision_172 = 1;
 
         sobj.model_00.coord2_14.coord.transfer.set(r.pos);
         sobj.model_00.coord2_14.transforms.rotate.set(r.rot);
@@ -914,27 +973,39 @@ public class LohanRaceManager {
         // 2 = Jump leap
         // 3 = Running gallop
         // 4 = Stumbling (slowTimer)
+        final boolean showJumpAnim = r.isJumping || r.jumpProgress > 0.0f;
         final int targetAnim = (state == RaceState.COUNTDOWN || state == RaceState.START_FADING_OUT ||
                                 state == RaceState.FINISH_IDLE || state == RaceState.FINISH_FADING_OUT) ? 0 :
-                               (r.isJumping ? 2 : (r.slowTimer > 0 ? 4 : 3));
+                               (showJumpAnim ? 2 : (r.slowTimer > 0 ? 4 : 3));
 
-        if (sobj.animIndex_132 != targetAnim || sobj.model_00.anim_08 == null || sobj.disableAnimation_12a) {
-          r.currentAnimIndex = targetAnim;
-          sobj.animIndex_132 = targetAnim;
+        if (targetAnim != 2) {
+          // Running / idle / stumbling: ensure animation is playing and loopable
           sobj.disableAnimation_12a = false;
           sobj.flags_190 &= ~0x6000_0000;
-          sobj.animationFinishedFrames_12c = 0;
-          if (smap.submap != null) {
-            List<legend.game.types.TmdAnimationFile> anims = null;
-            if (sobj.sobjIndex_12e < smap.submap.objects.size()) {
-              anims = smap.submap.objects.get(sobj.sobjIndex_12e).animations;
+        } else {
+          // Jump leap: set 0x4000_0000 so SMap freezes animation on last frame when leap completes in mid-air
+          sobj.flags_190 |= 0x4000_0000;
+        }
+
+        // Only reload animation if target animation changed or model has no animation loaded.
+        // For jump (targetAnim == 2), do NOT reload when disableAnimation_12a is set — it froze intentionally!
+        final boolean needsReload = (sobj.animIndex_132 != targetAnim) ||
+                                    (sobj.model_00.anim_08 == null) ||
+                                    (sobj.disableAnimation_12a && targetAnim != 2);
+
+        if (needsReload) {
+          final List<legend.game.types.TmdAnimationFile> anims = getCreatureAnimations(smap);
+          if (anims != null && targetAnim < anims.size() && anims.get(targetAnim) != null) {
+            r.currentAnimIndex = targetAnim;
+            sobj.animIndex_132 = targetAnim;
+            sobj.disableAnimation_12a = false;
+            if (targetAnim == 2) {
+              sobj.flags_190 |= 0x4000_0000;
+            } else {
+              sobj.flags_190 &= ~0x6000_0000;
             }
-            if ((anims == null || anims.isEmpty()) && smap.submap.objects.size() > 7) {
-              anims = smap.submap.objects.get(7).animations;
-            }
-            if (anims != null && targetAnim < anims.size() && anims.get(targetAnim) != null) {
-              loadModelStandardAnimation(sobj.model_00, anims.get(targetAnim));
-            }
+            sobj.animationFinishedFrames_12c = 0;
+            loadModelStandardAnimation(sobj.model_00, anims.get(targetAnim));
           }
         }
       }
