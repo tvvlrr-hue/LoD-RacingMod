@@ -32,6 +32,9 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 
+import legend.game.submap.SubmapMusic08;
+
+import static legend.core.GameEngine.AUDIO_THREAD;
 import static legend.core.GameEngine.CONFIG;
 import static legend.core.GameEngine.GTE;
 import static legend.core.GameEngine.PLATFORM;
@@ -49,6 +52,7 @@ import static legend.game.Text.clearTextbox;
 import static legend.game.Text.clearTextboxText;
 import static legend.game.Text.textboxes_800be358;
 import static legend.game.Text.textboxText_800bdf38;
+import static legend.game.sound.Audio.loadMusicPackage;
 import static legend.game.sound.Audio.playMenuSound;
 import static legend.lodmod.LodMod.INPUT_ACTION_SMAP_INTERACT;
 
@@ -142,6 +146,64 @@ public class LohanRaceManager {
   private static boolean isFirstPass = true;
   private static boolean lapCountedThisPass = false;
   private static IndicatorMode savedIndicatorMode = null;
+
+  // Minigame music override (Track 61: Arena Games)
+  private static int[] originalMusicCuts18 = null;
+  private static int[] originalMusicCuts17 = null;
+  private static boolean originalBit17 = false;
+  private static boolean musicOverrideActive = false;
+
+  private static void enableRaceMusicOverride(final boolean enable) {
+    try {
+      final Field field = RetailSubmap.class.getDeclaredField("_8004fb00");
+      field.setAccessible(true);
+      final SubmapMusic08[] array = (SubmapMusic08[]) field.get(null);
+      if (array != null && array.length > 18 && array[17] != null && array[18] != null) {
+        final SubmapMusic08 silenceEntry = array[17]; // Submap 14, silence (-1) for Cuts [149, 150, 151, 637, 638]
+        final SubmapMusic08 minigameEntry = array[18]; // Submap 14, Track 61 for Cuts [152, 634, 636, 639]
+        if (enable) {
+          if (!musicOverrideActive) {
+            originalMusicCuts18 = minigameEntry.submapCuts_04;
+            originalMusicCuts17 = silenceEntry.submapCuts_04;
+            minigameEntry.submapCuts_04 = new int[]{152, 634, 636, 639, 151, 150, 149};
+            silenceEntry.submapCuts_04 = new int[]{637, 638}; // Remove 151, 150, 149 so index 17 never silences race scenes
+            if (gameState_800babc8 != null && gameState_800babc8._1a4 != null) {
+              originalBit17 = (gameState_800babc8._1a4[0] & (1 << 17)) != 0;
+              gameState_800babc8._1a4[0] &= ~(1 << 17); // Clear bit 17 so index 17 never matches
+              gameState_800babc8._1a4[0] |= (1 << 18);  // Set bit 18 so index 18 matches
+            }
+            musicOverrideActive = true;
+            LOGGER.info("LohanRaceManager: Enabled minigame music override (Track 61) for Cuts 151, 150, 149");
+          }
+        } else {
+          if (musicOverrideActive) {
+            if (originalMusicCuts18 != null) {
+              minigameEntry.submapCuts_04 = originalMusicCuts18;
+              originalMusicCuts18 = null;
+            } else {
+              minigameEntry.submapCuts_04 = new int[]{152, 634, 636, 639};
+            }
+            if (originalMusicCuts17 != null) {
+              silenceEntry.submapCuts_04 = originalMusicCuts17;
+              originalMusicCuts17 = null;
+            } else {
+              silenceEntry.submapCuts_04 = new int[]{149, 150, 151, 637, 638};
+            }
+            if (gameState_800babc8 != null && gameState_800babc8._1a4 != null) {
+              if (originalBit17) {
+                gameState_800babc8._1a4[0] |= (1 << 17);
+              }
+              gameState_800babc8._1a4[0] &= ~(1 << 18);
+            }
+            musicOverrideActive = false;
+            LOGGER.info("LohanRaceManager: Disabled minigame music override.");
+          }
+        }
+      }
+    } catch (Throwable t) {
+      LOGGER.warn("LohanRaceManager: Could not adjust RetailSubmap music table", t);
+    }
+  }
 
   // The 3 official racing creature sobj indices in Severed Chains:
   // Submap object 8 (file 264) = NPC 1 (Lane 0 - Left)
@@ -427,6 +489,14 @@ public class LohanRaceManager {
     // Trigger fade out to black
     startFadeEffect(1, 15);
 
+    // Enable minigame music (Track 61: Arena Games) across all Lohan race scenes
+    enableRaceMusicOverride(true);
+    try {
+      loadMusicPackage(61);
+    } catch (Throwable t) {
+      LOGGER.warn("LohanRaceManager: Could not load music package 61", t);
+    }
+
     // Reset racers to starting grid (waypoint 0 of Cut 151 Scene 1)
     for (final Racer r : racers) {
       r.pathProgress = 0.0f;
@@ -547,11 +617,23 @@ public class LohanRaceManager {
     }
 
     if (!isRaceActive()) {
+      enableRaceMusicOverride(false);
       return;
     }
 
     currentCut = retail.cut;
     LOGGER.info("LohanRaceManager: Loaded submap cut %d during race.", currentCut);
+
+    // Keep minigame music active across scene transitions
+    enableRaceMusicOverride(true);
+    try {
+      if (AUDIO_THREAD.getSongId() != 61) {
+        loadMusicPackage(61);
+      } else if (!AUDIO_THREAD.isMusicPlaying()) {
+        AUDIO_THREAD.startSequence();
+      }
+    } catch (Throwable ignored) {
+    }
 
     if (currentCut == 150) {
       // Fix foreground bridge cutout occluding racers in Cut 150.
@@ -717,7 +799,7 @@ public class LohanRaceManager {
     }
 
     if (!pendingDartRestore && !isRaceActive()) {
-      // Allow Dart to exit Cut 151 via both the main town doorway and racetrack ramp back to Lohan town (Cut 150)
+      // Allow Dart to exit Cut 151 via both the main town doorway, racetrack ramp, and top archway to Arena
       if (currentEngineState_8004dd04 instanceof final SMap smap && smap.submap instanceof final RetailSubmap retail && retail.cut == 151) {
         if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
           final SubmapObject210 dart = smap.sobjs_800c6880[0].innerStruct_00;
@@ -729,6 +811,7 @@ public class LohanRaceManager {
           }
 
           boolean shouldTransitionToTown = false;
+          boolean shouldTransitionToArena = false;
 
           // 1. Main town doorway exit (Primitive 0 corridor: X < -15.0f and Z around -860)
           if (dart.collidedPrimitiveIndex_16c == 0 ||
@@ -742,7 +825,15 @@ public class LohanRaceManager {
             shouldTransitionToTown = true;
           }
 
-          if (shouldTransitionToTown) {
+          // 3. Top archway exit to Arena (Cut 149, scene 18)
+          // Primitive 36 is the transition trigger. Primitive 35 corridor extends past X < -440 and Z > 600, or Z > 730.
+          if (dart.collidedPrimitiveIndex_16c == 36 ||
+              (dartPos.x < -440.0f && dartPos.z > 600.0f) ||
+              (dartPos.x < -360.0f && dartPos.z > 730.0f)) {
+            shouldTransitionToArena = true;
+          }
+
+          if (shouldTransitionToTown || shouldTransitionToArena) {
             try {
               if (transitioningField == null) {
                 transitioningField = SMap.class.getDeclaredField("transitioning_800f7e4c");
@@ -750,9 +841,15 @@ public class LohanRaceManager {
               }
               final boolean isTransitioning = transitioningField.getBoolean(smap);
               if (!isTransitioning) {
-                LOGGER.info("LohanRaceManager: Player exiting Cut 151 to Lohan town (Cut 150) at pos=(%.1f, %.1f, %.1f), prim=%d",
-                    dartPos.x, dartPos.y, dartPos.z, dart.collidedPrimitiveIndex_16c);
-                smap.mapTransition(150, 0);
+                if (shouldTransitionToTown) {
+                  LOGGER.info("LohanRaceManager: Player exiting Cut 151 to Lohan town (Cut 150) at pos=(%.1f, %.1f, %.1f), prim=%d",
+                      dartPos.x, dartPos.y, dartPos.z, dart.collidedPrimitiveIndex_16c);
+                  smap.mapTransition(150, 0);
+                } else {
+                  LOGGER.info("LohanRaceManager: Player exiting Cut 151 to Lohan arena (Cut 149) at pos=(%.1f, %.1f, %.1f), prim=%d",
+                      dartPos.x, dartPos.y, dartPos.z, dart.collidedPrimitiveIndex_16c);
+                  smap.mapTransition(149, 18);
+                }
               }
             } catch (Throwable t) {
               LOGGER.warn("Could not check transitioning via reflection", t);
@@ -786,6 +883,14 @@ public class LohanRaceManager {
       } else if (state == RaceState.COUNTDOWN) {
         updateCountdown();
       } else if (state == RaceState.RACING) {
+        try {
+          if (AUDIO_THREAD.getSongId() != 61) {
+            loadMusicPackage(61);
+          } else if (!AUDIO_THREAD.isMusicPlaying()) {
+            AUDIO_THREAD.startSequence();
+          }
+        } catch (Throwable ignored) {
+        }
         updateRace();
       } else if (state == RaceState.FINISH_IDLE || state == RaceState.FINISH_FADING_OUT) {
         updateFinished();
@@ -1232,6 +1337,7 @@ public class LohanRaceManager {
 
   private static void returnToVendor() {
     state = RaceState.INACTIVE;
+    enableRaceMusicOverride(false);
     safelyClearHUDTextbox();
     if (!(currentEngineState_8004dd04 instanceof final SMap smap)) return;
 
@@ -1242,6 +1348,21 @@ public class LohanRaceManager {
       if (gameState_800babc8 != null && gameState_800babc8.scriptData_08 != null) {
         gameState_800babc8.scriptData_08[27] = Math.min(99, gameState_800babc8.scriptData_08[27] + 3);
         LOGGER.info("LohanRaceManager: Player won 1st place! Awarded 3 tickets (total=%d).", gameState_800babc8.scriptData_08[27]);
+      }
+    }
+
+    // Mark minigame as played in festival event so Dart and Shana's date progresses
+    // and Lavitz recognizes minigame completion to allow leaving the festival.
+    if (gameState_800babc8 != null) {
+      if (gameState_800babc8.scriptFlags1_13c != null) {
+        // 0x67 is the global minigame return flag checked by Cut 151/150/149 for post-minigame dialogue
+        gameState_800babc8.scriptFlags1_13c.set(0x67, true);
+      }
+      if (gameState_800babc8.scriptFlags2_bc != null) {
+        // 0x3be (958) and 0x3bf (959) are minigame-played flags checked by Lavitz at [122b] in Cut 149
+        gameState_800babc8.scriptFlags2_bc.set(0x3be, true);
+        gameState_800babc8.scriptFlags2_bc.set(0x3bf, true);
+        LOGGER.info("LohanRaceManager: Set festival minigame flags (0x67, 0x3be, 0x3bf) for Lavitz date progression.");
       }
     }
 
@@ -1315,6 +1436,14 @@ public class LohanRaceManager {
       } catch (Throwable ignored) {
       }
       savedIndicatorMode = null;
+    }
+
+    // Ensure Lohan town music (Track 31) is restored if still playing minigame music
+    try {
+      if (AUDIO_THREAD.getSongId() == 61) {
+        loadMusicPackage(31);
+      }
+    } catch (Throwable ignored) {
     }
   }
 
