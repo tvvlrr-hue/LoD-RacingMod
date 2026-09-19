@@ -2,5 +2,6 @@
 bin/
 *.class
 *.jar
+!racing-minigame.jar
 .DS_Store
 Thumbs.db
