@@ -54,7 +54,7 @@ public class LohanRaceNpc {
   // Interaction trigger zone in front of the bottom right booth's counter
   public static final float BOOTH_FRONT_X = 145.0f;
   public static final float BOOTH_FRONT_Z = -845.0f;
-  public static final float INTERACT_RADIUS = 85.0f;
+  public static final float INTERACT_RADIUS = 100.0f;
 
   public enum DialogueState {
     IDLE,

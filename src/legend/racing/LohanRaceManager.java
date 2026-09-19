@@ -47,6 +47,11 @@ import static legend.game.Graphics.worldToScreenMatrix_800c3548;
 import static legend.game.Models.loadModelStandardAnimation;
 import static legend.game.Scus94491BpeSegment_800b.gameState_800babc8;
 import static legend.game.Scus94491BpeSegment_800b.sobjPositions_800bd818;
+import legend.game.submap.SubmapState;
+import static legend.game.Scus94491BpeSegment_8005.shouldRestoreCameraPosition_80052c40;
+import static legend.game.Scus94491BpeSegment_8005.submapCutBeforeBattle_80052c3c;
+import static legend.game.Scus94491BpeSegment_800b.playerPositionBeforeBattle_800bed30;
+import static legend.game.Scus94491BpeSegment_800b.screenOffsetBeforeBattle_800bed50;
 import static legend.game.Text.calculateAppropriateTextboxBounds;
 import static legend.game.Text.clearTextbox;
 import static legend.game.Text.clearTextboxText;
@@ -54,6 +59,7 @@ import static legend.game.Text.textboxes_800be358;
 import static legend.game.Text.textboxText_800bdf38;
 import static legend.game.sound.Audio.loadMusicPackage;
 import static legend.game.sound.Audio.playMenuSound;
+import static legend.game.sound.Audio.stopCurrentMusicSequence;
 import static legend.lodmod.LodMod.INPUT_ACTION_SMAP_INTERACT;
 
 public class LohanRaceManager {
@@ -140,9 +146,6 @@ public class LohanRaceManager {
   private static int lastAlertHurdleIndex = -1;
   public static final Vector3f BOOTH_FRONT_POS = new Vector3f(145.0f, -4.0f, -845.0f);
   public static final float BOOTH_DART_ROT_Y = 5.3947f; // Facing northeast toward vendor booth
-  private static boolean pendingDartRestore = false;
-  private static boolean cut151Reloaded = false;
-  private static int dartRestoreFrames = 0;
   private static boolean isFirstPass = true;
   private static boolean lapCountedThisPass = false;
   private static IndicatorMode savedIndicatorMode = null;
@@ -520,6 +523,22 @@ public class LohanRaceManager {
       final SubmapObject210 dartSobj = smap.sobjs_800c6880[0].innerStruct_00;
       dartSavedPos.set(dartSobj.model_00.coord2_14.coord.transfer);
       dartSavedRot.set(dartSobj.model_00.coord2_14.transforms.rotate);
+
+      // Save exact pre-race submap state so SMap restores it cleanly on minigame conclusion
+      try {
+        submapCutBeforeBattle_80052c3c = 151;
+        shouldRestoreCameraPosition_80052c40 = true;
+        final Field offsetField = SMap.class.getDeclaredField("screenOffset_800cb568");
+        offsetField.setAccessible(true);
+        final Object offsetObj = offsetField.get(smap);
+        if (offsetObj instanceof org.joml.Vector2f v) {
+          screenOffsetBeforeBattle_800bed50.set(v);
+        }
+        playerPositionBeforeBattle_800bed30.set(dartSobj.model_00.coord2_14.coord);
+      } catch (Throwable t) {
+        LOGGER.warn("LohanRaceManager: Could not save pre-race submap state", t);
+      }
+
       dartSobj.hidden_128 = true;
       dartSobj.cameraAttached_178 = false;
       smap.sobjs_800c6880[0].pause();
@@ -588,32 +607,6 @@ public class LohanRaceManager {
       } catch (Throwable t) {
         LOGGER.warn("LohanRaceManager: Could not add ramp exit doors", t);
       }
-    }
-
-    // Handle deferred Dart restoration after race finishes and Cut 151 reloads
-    if (pendingDartRestore && retail.cut == 151) {
-      cut151Reloaded = true;
-      LOGGER.info("LohanRaceManager: Preparing Dart in front of booth on Cut 151 load.");
-      if (sobjPositions_800bd818 != null && sobjPositions_800bd818.length > 0) {
-        sobjPositions_800bd818[0].pos_00.set(BOOTH_FRONT_POS);
-        sobjPositions_800bd818[0].rot_0c.set(0.0f, BOOTH_DART_ROT_Y, 0.0f);
-      }
-      try {
-        final Field modeField = SMap.class.getDeclaredField("playerPositionRestoreMode_800f7e24");
-        modeField.setAccessible(true);
-        modeField.setInt(smap, 2);
-
-        final Field mvField = SMap.class.getDeclaredField("playerPositionWhenLoadingSubmap_800c6ac0");
-        mvField.setAccessible(true);
-        final Object mvObj = mvField.get(smap);
-        if (mvObj instanceof MV mv) {
-          mv.transfer.set(BOOTH_FRONT_POS);
-        }
-      } catch (Throwable t) {
-        LOGGER.warn("Could not set playerPositionRestoreMode via reflection", t);
-      }
-
-      return;
     }
 
     if (!isRaceActive()) {
@@ -784,23 +777,12 @@ public class LohanRaceManager {
   }
 
   public static void onRender() {
-    if (pendingDartRestore && cut151Reloaded) {
-      if (currentEngineState_8004dd04 instanceof final SMap smap && smap.submap instanceof final RetailSubmap retail && retail.cut == 151) {
-        if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
-          restoreDart(smap);
-          dartRestoreFrames--;
-          if (dartRestoreFrames <= 0) {
-            pendingDartRestore = false;
-            cut151Reloaded = false;
-            LOGGER.info("LohanRaceManager: Dart restoration complete in front of booth.");
-          }
-        }
-      }
-    }
-
-    if (!pendingDartRestore && !isRaceActive()) {
+    if (!isRaceActive()) {
       // Allow Dart to exit Cut 151 via both the main town doorway, racetrack ramp, and top archway to Arena
       if (currentEngineState_8004dd04 instanceof final SMap smap && smap.submap instanceof final RetailSubmap retail && retail.cut == 151) {
+        if (smap.smapLoadingStage_800cb430 != SubmapState.RENDER_SUBMAP_12) {
+          return;
+        }
         if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
           final SubmapObject210 dart = smap.sobjs_800c6880[0].innerStruct_00;
           final Vector3f dartPos = dart.model_00.coord2_14.coord.transfer;
@@ -1366,69 +1348,6 @@ public class LohanRaceManager {
       }
     }
 
-    // Always do a clean map transition back to Cut 151 scene 2.
-    // In retail LoD, Scene 2 is the entrance scene from Lohan town (Cut 150).
-    // Primitive 0 is the exit door, so entering with scene 2 avoids immediately landing on an exit trigger.
-    pendingDartRestore = true;
-    cut151Reloaded = false;
-    dartRestoreFrames = 15;
-    smap.mapTransition(151, 2);
-  }
-
-  private static void restoreDart(final SMap smap) {
-    if (smap.sobjs_800c6880 != null && smap.sobjs_800c6880.length > 0 && smap.sobjs_800c6880[0] != null) {
-      final ScriptState<SubmapObject210> dartState = smap.sobjs_800c6880[0];
-      final SubmapObject210 dart = dartState.innerStruct_00;
-      dart.hidden_128 = false;
-      dart.disableAnimation_12a = false;
-      dart.cameraAttached_178 = true;
-      dart.ignoreCollision_172 = 0;
-      dart.model_00.coord2_14.coord.transfer.set(BOOTH_FRONT_POS);
-      dart.model_00.coord2_14.transforms.rotate.set(0.0f, BOOTH_DART_ROT_Y, 0.0f);
-      dart.movementStep_148.zero();
-      dart.interpMovementTicks = 0;
-      dart.interpMovementTicksTotal = 0;
-      dart.movementTicks_144 = 0;
-      dart.movementType_170 = 0;
-      dart.interpRotationTicksTotalY = 0;
-      dart.rotationFrames_188 = 0;
-      dart.animIndex_132 = 0;
-
-      final CollisionGeometry col = getCollisionGeometry(smap);
-      if (col != null) {
-        final int boothPrim = col.getClosestCollisionPrimitive(BOOTH_FRONT_POS.x, BOOTH_FRONT_POS.y, BOOTH_FRONT_POS.z);
-        dart.collidedPrimitiveIndex_16c = boothPrim;
-        Scus94491BpeSegment_8005.collidedPrimitiveIndex_80052c38 = boothPrim;
-      }
-
-      try {
-        if (transitioningField == null) {
-          transitioningField = SMap.class.getDeclaredField("transitioning_800f7e4c");
-          transitioningField.setAccessible(true);
-        }
-        transitioningField.setBoolean(smap, false);
-      } catch (Throwable ignored) {
-      }
-      if (smap.submap != null && !smap.submap.objects.isEmpty() && dart.sobjIndex_12e < smap.submap.objects.size()) {
-        final SubmapObject playerObj = smap.submap.objects.get(dart.sobjIndex_12e);
-        if (!playerObj.animations.isEmpty()) {
-          loadModelStandardAnimation(dart.model_00, playerObj.animations.get(0));
-        }
-      }
-      dartState.resume();
-
-      // Direct camera to Dart without re-hiding Dart
-      try {
-        GTE.setTransforms(worldToScreenMatrix_800c3548);
-        if (setCameraPosMethod == null) {
-          setCameraPosMethod = SMap.class.getDeclaredMethod("setCameraPos", int.class, Vector3f.class);
-          setCameraPosMethod.setAccessible(true);
-        }
-        setCameraPosMethod.invoke(smap, 1, BOOTH_FRONT_POS);
-      } catch (Throwable ignored) {
-      }
-    }
-
     // Restore indicator config
     if (savedIndicatorMode != null) {
       try {
@@ -1438,13 +1357,27 @@ public class LohanRaceManager {
       savedIndicatorMode = null;
     }
 
-    // Ensure Lohan town music (Track 31) is restored if still playing minigame music
+    // Stop minigame music if still active
     try {
-      if (AUDIO_THREAD.getSongId() == 61) {
-        loadMusicPackage(31);
+      if (AUDIO_THREAD.getSongId() == 61 || AUDIO_THREAD.isMusicPlaying()) {
+        AUDIO_THREAD.stopSequence();
       }
+      stopCurrentMusicSequence();
     } catch (Throwable ignored) {
     }
+
+    // Ensure state restoration before battle/event kicks in so SMap cleanly restores Dart
+    // to the exact pre-minigame position and camera screen offset
+    try {
+      submapCutBeforeBattle_80052c3c = 151;
+      shouldRestoreCameraPosition_80052c40 = true;
+      playerPositionBeforeBattle_800bed30.transfer.set(dartSavedPos);
+    } catch (Throwable ignored) {
+    }
+
+    // Clean map transition back to Cut 151 scene 5 (Booth area)
+    currentCut = 151;
+    smap.mapTransition(151, 5);
   }
 
   private static Waypoint[] getLaneWaypoints(final int laneIndex) {
